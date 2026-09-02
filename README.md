@@ -25,12 +25,17 @@
 3. **أبحاث أخلاقيات الذكاء الاصطناعي:** تحليلات ومُخرجات متقدمة في السيادة الرقمية، المساءلة القانونية، وأنظمة الذاكرة التكيفية.
 
 ---
+## 🛠️ المهارات والأدوات (Technologies & Skills)
 
-## 💻 المهارات والأدوات (Skills & Technologies)
+* **البرمجة (Programming):**
+  `Python` (APIs Integration, Data Processing, Hash Cryptography)
 
-* **البرمجة (Programming):** Python (APIs Integration, Data Processing, Hash Cryptography)
-* **الذكاء الاصطناعي والحوكمة (AI & Governance):** AI Ethics, Policy Analysis, Vector DBs
-* **إدارة المنصات (Platform Management):** GitHub Workflows, Data Digitization
+* **الذكاء الاصطناعي والحوكمة (AI & Governance):**
+  `AI Ethics` | `Policy Analysis` | `Vector DBs`
+
+* **إدارة المنصات (Platform Management):**
+  `GitHub Workflows` | `Data Digitization`
+
 
 ---
 
