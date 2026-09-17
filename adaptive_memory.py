@@ -1,10 +1,17 @@
-import numpy as np
-from datetime import datetime, timezone
+"""Adaptive Memory Engine module for intelligent context retrieval."""
+from datetime import datetime, timedelta, timezone
 import math
 
+import numpy as np
+
+
 class AdaptiveMemoryEngine:
+    """Engine for adaptive memory management with semantic similarity and time decay."""
+
     def __init__(self, decay_rate=0.01, similarity_threshold=0.5):
         """
+        Initialize the Adaptive Memory Engine.
+
         :param decay_rate: معدل التضاؤل الزمني (كلما زاد، قل وزن الذكريات القديمة بسرعة)
         :param similarity_threshold: الحد الأدنى لمستوى التشابه القبول
         """
@@ -13,21 +20,21 @@ class AdaptiveMemoryEngine:
         self.memory_store = []
 
     def _cosine_similarity(self, vec_a, vec_b):
-        """حساب التشابه الجتاهي بين متجهين"""
+        """حساب التشابه الدلالي بين متجهين"""
         a = np.array(vec_a)
         b = np.array(vec_b)
         dot_product = np.dot(a, b)
         norm_a = np.linalg.norm(a)
         norm_b = np.linalg.norm(b)
-        
+
         if norm_a == 0 or norm_b == 0:
             return 0.0
         return dot_product / (norm_a * norm_b)
 
     def _calculate_time_decay(self, timestamp):
         """حساب معامل التضاؤل الزمني بناءً على الفارق الأيام"""
-        now = datetime.now(timezone.utc)
-        time_diff = (now - timestamp).total_seconds() / (3600 * 24) # تحويل إلى أيام
+        current_time = datetime.now(timezone.utc)
+        time_diff = (current_time - timestamp).total_seconds() / (3600 * 24)
         # دالة الأس للتضاؤل التدريجي: e^(-lambda * t)
         decay_factor = math.exp(-self.decay_rate * max(0, time_diff))
         return decay_factor, time_diff
@@ -36,7 +43,7 @@ class AdaptiveMemoryEngine:
         """إضافة سجل جديد إلى الذاكرة"""
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
-            
+
         self.memory_store.append({
             "id": memory_id,
             "content": content,
@@ -50,8 +57,10 @@ class AdaptiveMemoryEngine:
 
         for item in self.memory_store:
             # 1. حساب التشابه الدلالي
-            semantic_score = self._cosine_similarity(query_embedding, item["embedding"])
-            
+            semantic_score = self._cosine_similarity(
+                query_embedding, item["embedding"]
+            )
+
             if semantic_score < self.similarity_threshold:
                 continue
 
@@ -74,14 +83,13 @@ class AdaptiveMemoryEngine:
         results.sort(key=lambda x: x["final_score"], reverse=True)
         return results[:top_k]
 
+
 # ==========================================
 # تجربة سريعة للوظيفة (Example Usage)
 # ==========================================
 if __name__ == "__main__":
-    from datetime import timedelta
-
     engine = AdaptiveMemoryEngine(decay_rate=0.05, similarity_threshold=0.4)
-    now = datetime.now(timezone.utc)
+    current_time = datetime.now(timezone.utc)
 
     # نموذج لمتجهات وهمية للعرض (شبه مطابقة)
     base_vector = [0.12, 0.85, 0.44, 0.21, 0.90]
@@ -91,7 +99,7 @@ if __name__ == "__main__":
         memory_id="MEM_001",
         content="قرار سابق بخصوص معايير الحوكمة والسياسات العامة",
         embedding=[0.11, 0.84, 0.43, 0.20, 0.89],
-        timestamp=now - timedelta(days=30)
+        timestamp=current_time - timedelta(days=30)
     )
 
     # إضافة سياق حديث (قبل يوم واحد)
@@ -99,14 +107,19 @@ if __name__ == "__main__":
         memory_id="MEM_002",
         content="تحديث أخير بخصوص معايير الحوكمة والسياسات العامة",
         embedding=[0.10, 0.82, 0.45, 0.22, 0.88],
-        timestamp=now - timedelta(days=1)
+        timestamp=current_time - timedelta(days=1)
     )
 
     # استعلام جديد
-    query_vec = [0.12, 0.85, 0.44, 0.21, 0.90]
+    query_vec = base_vector
     top_memories = engine.retrieve(query_vec, top_k=2)
 
     print("--- نتائج الاسترجاع التكيفي ---")
-    for m in top_memories:
-        print(f"ID: {m['id']} | النهاية: {m['final_score']} | التشابه: {m['semantic_score']} | التضاؤل الزمني: {m['time_decay_factor']} (عمرها {m['days_old']} يوم)")
-        print(f"المحتوى: {m['content']}\n")
+    for memory in top_memories:
+        print(
+            f"ID: {memory['id']} | النهاية: {memory['final_score']} | "
+            f"التشابه: {memory['semantic_score']} | "
+            f"التضاؤل الزمني: {memory['time_decay_factor']} "
+            f"(عمرها {memory['days_old']} يوم)"
+        )
+        print(f"المحتوى: {memory['content']}\n")
