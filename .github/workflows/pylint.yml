@@ -9,15 +9,22 @@ jobs:
       matrix:
         python-version: ["3.10"]
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install numpy pylint
-    - name: Analysing the code with pylint
-      run: |
-        pylint --disable=C0301,C0303,C0114,C0115,C0411,W0621,C0412 --fail-under=8 adaptive_memory.py
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pylint
+
+      - name: Analyse the code with pylint
+        run: |
+          pylint --disable=C0301,C0303,C0114,C0115,C0411,W0621,C0412 \
+            --fail-under=8 adaptive_memory.py
+
+      - name: Run adaptive memory example
+        run: python adaptive_memory.py
