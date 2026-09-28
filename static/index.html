@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>محادثة موحّدة — Gemini + DeepSeek</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -14,9 +16,10 @@
     --text: #e6e8ee;
     --muted: #8a90a2;
     --accent: #4f8cff;
-    --accent-2: #10b981;
     --user: #2563eb;
     --ai: #1f2433;
+    --danger: #ff6b6b;
+    --success: #34d399;
   }
   body {
     font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
@@ -70,8 +73,9 @@
   button:hover { filter: brightness(1.1); }
   button.ghost { background: transparent; color: var(--text); border-color: var(--border); }
   button:disabled { opacity: .5; cursor: not-allowed; }
+  button.danger { background: var(--danger); border-color: var(--danger); }
 
-  /* Settings bar */
+  /* Settings Panel */
   .settings {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
@@ -84,8 +88,17 @@
   .settings .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
   .settings label { font-size: 12px; color: var(--muted); }
   .settings input { width: 100%; }
+  .warning {
+    font-size: 11px;
+    color: #fbbf24;
+    padding: 6px 10px;
+    background: rgba(251, 191, 36, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    width: 100%;
+  }
 
-  /* Chat area */
+  /* Chat Area */
   main {
     flex: 1;
     overflow-y: auto;
@@ -100,9 +113,9 @@
     padding: 12px 16px;
     border-radius: 12px;
     line-height: 1.7;
-    white-space: pre-wrap;
     word-wrap: break-word;
     animation: fade .2s ease-out;
+    position: relative;
   }
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
   .msg.user {
@@ -122,6 +135,10 @@
     color: var(--muted);
     margin-bottom: 6px;
     font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
   }
   .msg.user .meta { color: #cfe0ff; }
   .msg .content { white-space: pre-wrap; }
@@ -138,6 +155,25 @@
     overflow-x: auto;
     margin: 8px 0;
   }
+  .msg .content pre code { background: none; padding: 0; }
+  .msg .content ul, .msg .content ol { padding-right: 20px; margin: 6px 0; }
+  .msg .content a { color: var(--accent); text-decoration: underline; }
+  .msg .content table { border-collapse: collapse; margin: 8px 0; }
+  .msg .content th, .msg .content td { border: 1px solid var(--border); padding: 6px 10px; }
+  .msg .content th { background: var(--panel-2); }
+
+  .copy-btn {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
   .cursor::after {
     content: "▍";
     color: var(--accent);
@@ -154,7 +190,7 @@
   }
   .empty h2 { color: var(--text); font-size: 20px; margin-bottom: 10px; }
 
-  /* Composer */
+  /* Footer */
   footer {
     background: var(--panel);
     border-top: 1px solid var(--border);
@@ -172,7 +208,23 @@
   }
   footer .send { padding: 12px 20px; }
 
-  /* Scrollbar */
+  /* Loading indicator */
+  .loading-dots {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .loading-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: dotPulse 1.2s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotPulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 8px; }
 
@@ -188,13 +240,14 @@
   <h1>🤖 محادثة موحّدة</h1>
   <span class="badge" id="providerBadge">DeepSeek</span>
   <div class="spacer"></div>
-  <select id="provider" title="اختر المزوّد">
+  <select id="provider">
     <option value="deepseek">DeepSeek</option>
     <option value="gemini">Gemini</option>
   </select>
-  <select id="model" title="اختر النموذج"></select>
+  <select id="model"></select>
+  <button class="ghost" id="regenerateBtn" disabled>🔄 إعادة</button>
   <button class="ghost" id="settingsBtn">⚙️ الإعدادات</button>
-  <button class="ghost" id="clearBtn">🗑️ مسح</button>
+  <button class="ghost danger" id="clearBtn">🗑️ مسح</button>
 </header>
 
 <section class="settings" id="settings">
@@ -209,6 +262,9 @@
   <div class="field">
     <label>System Prompt (اختياري)</label>
     <input type="text" id="sysPrompt" value="أنت مساعد ذكي. أجب بالعربية بوضوح وإيجاز." />
+  </div>
+  <div class="warning">
+    ⚠️ المفاتيح تُحفظ محليًا على جهازك فقط. لا تشاركها مع أحد.
   </div>
 </section>
 
@@ -227,7 +283,7 @@
 
 <script>
 /* =========================================================
-   الإعدادات والنماذج
+   النماذج المتاحة
 ========================================================= */
 const MODELS = {
   deepseek: [
@@ -236,8 +292,7 @@ const MODELS = {
   ],
   gemini: [
     { id: "gemini-2.0-flash",       name: "Gemini 2.0 Flash" },
-    { id: "gemini-2.5-flash",       name: "Gemini 2.5 Flash" },
-    { id: "gemini-2.5-pro",         name: "Gemini 2.5 Pro" }
+    { id: "gemini-2.0-pro-exp-02-05", name: "Gemini 2.0 Pro (Experimental)" }
   ]
 };
 
@@ -247,29 +302,30 @@ const MODELS = {
 const state = {
   provider: "deepseek",
   model: "deepseek-chat",
-  // history لكل مزوّد على حدة
   history: { deepseek: [], gemini: [] },
-  streaming: false
+  streaming: false,
+  lastUserMsg: null
 };
 
 /* =========================================================
    عناصر DOM
 ========================================================= */
 const $ = (id) => document.getElementById(id);
-const chatEl     = $("chat");
-const emptyEl    = $("empty");
-const inputEl    = $("input");
-const sendBtn    = $("sendBtn");
-const providerEl = $("provider");
-const modelEl    = $("model");
-const badgeEl    = $("providerBadge");
-const settingsEl = $("settings");
-const dsKeyEl    = $("dsKey");
-const gmKeyEl    = $("gmKey");
-const sysPromptEl= $("sysPrompt");
+const chatEl      = $("chat");
+const emptyEl     = $("empty");
+const inputEl     = $("input");
+const sendBtn     = $("sendBtn");
+const providerEl  = $("provider");
+const modelEl     = $("model");
+const badgeEl     = $("providerBadge");
+const settingsEl  = $("settings");
+const dsKeyEl     = $("dsKey");
+const gmKeyEl     = $("gmKey");
+const sysPromptEl = $("sysPrompt");
+const regenBtn    = $("regenerateBtn");
 
 /* =========================================================
-   تحميل/حفظ الإعدادات من localStorage
+   تحميل/حفظ الإعدادات
 ========================================================= */
 function loadSettings() {
   dsKeyEl.value = localStorage.getItem("dsKey") || "";
@@ -278,7 +334,7 @@ function loadSettings() {
     "أنت مساعد ذكي. أجب بالعربية بوضوح وإيجاز.";
   const p = localStorage.getItem("provider");
   const m = localStorage.getItem("model");
-  if (p) state.provider = p;
+  if (p && MODELS[p]) state.provider = p;
   if (m) state.model = m;
 }
 function saveSettings() {
@@ -290,7 +346,7 @@ function saveSettings() {
 }
 
 /* =========================================================
-   تعبئة قائمة النماذج حسب المزوّد
+   تعبئة قائمة النماذج
 ========================================================= */
 function refreshModels() {
   const list = MODELS[state.provider];
@@ -310,35 +366,50 @@ function refreshModels() {
 }
 
 /* =========================================================
-   عرض الرسائل
+   أدوات العرض
 ========================================================= */
 function escapeHTML(str) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-// ماركداون بسيط جداً (كود + عريض)
-function simpleMarkdown(text) {
-  let html = escapeHTML(text);
-  html = html.replace(/```([\s\S]*?)```/g, (_, code) =>
-    `<pre><code>${code.trim()}</code></pre>`);
-  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  return html;
+
+function renderMarkdown(text) {
+  try {
+    return marked.parse(text);
+  } catch {
+    return `<pre>${escapeHTML(text)}</pre>`;
+  }
 }
 
 function addMessage(role, text, provider) {
   if (emptyEl) emptyEl.remove();
   const wrap = document.createElement("div");
   wrap.className = `msg ${role === "user" ? "user" : "ai"}`;
+
   const meta = document.createElement("div");
   meta.className = "meta";
   meta.textContent = role === "user" ? "أنت" :
     (provider === "gemini" ? "Gemini" : "DeepSeek");
+
+  // زر النسخ للردود
+  if (role !== "user") {
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "copy-btn";
+    copyBtn.textContent = "نسخ";
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(wrap.dataset.raw || "").then(() => {
+        copyBtn.textContent = "تم ✓";
+        copyBtn.classList.add("copied");
+        setTimeout(() => { copyBtn.textContent = "نسخ"; copyBtn.classList.remove("copied"); }, 2000);
+      });
+    });
+    meta.appendChild(copyBtn);
+  }
+
   const content = document.createElement("div");
   content.className = "content";
-  content.innerHTML = simpleMarkdown(text);
+  content.innerHTML = text ? renderMarkdown(text) : "";
+  wrap.dataset.raw = text || "";
+
   wrap.appendChild(meta);
   wrap.appendChild(content);
   chatEl.appendChild(wrap);
@@ -359,22 +430,17 @@ async function callDeepSeek(messages, onDelta) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${key}`
     },
-    body: JSON.stringify({
-      model: state.model,
-      messages,
-      stream: true
-    })
+    body: JSON.stringify({ model: state.model, messages, stream: true })
   });
 
   if (!res.ok) {
-    const err = await res.text();
+    const err = await res.text().catch(() => "");
     throw new Error(`DeepSeek ${res.status}: ${err.slice(0, 200)}`);
   }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = "";
-  let full = "";
+  let buffer = "", full = "";
 
   while (true) {
     const { value, done } = await reader.read();
@@ -392,34 +458,39 @@ async function callDeepSeek(messages, onDelta) {
         const json = JSON.parse(data);
         const delta = json.choices?.[0]?.delta?.content || "";
         if (delta) { full += delta; onDelta(full); }
-      } catch (_) { /* تجاهل */ }
+      } catch (_) {}
     }
   }
   return full;
 }
 
 /* =========================================================
-   Gemini API
+   Gemini API — الصيغة الصحيحة
 ========================================================= */
 async function callGemini(messages, onDelta) {
   const key = gmKeyEl.value.trim();
   if (!key) throw new Error("مفتاح Gemini API غير موجود. أضفه من الإعدادات.");
 
-  // تحويل الرسائل لصيغة Gemini
-  const contents = messages
-    .filter(m => m.role !== "system")
-    .map(m => ({
+  // تحويل السجل إلى صيغة Gemini contents[]
+  const contents = [];
+  for (const m of messages) {
+    if (m.role === "system") continue;
+    contents.push({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }]
-    }));
-
-  const systemMsg = messages.find(m => m.role === "system");
-  const body = { contents };
-  if (systemMsg) {
-    body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+    });
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:streamGenerateContent?alt=sse&key=${key}`;
+  const sysMsg = messages.find(m => m.role === "system");
+  const body = {
+    contents,
+    generationConfig: { temperature: 0.7, topK: 40, topP: 0.95 }
+  };
+  if (sysMsg?.content) {
+    body.systemInstruction = { parts: [{ text: sysMsg.content }] };
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:streamGenerateContent?key=${encodeURIComponent(key)}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -428,14 +499,13 @@ async function callGemini(messages, onDelta) {
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini ${res.status}: ${err.slice(0, 200)}`);
+    const err = await res.text().catch(() => "");
+    throw new Error(`Gemini ${res.status}: ${err.slice(0, 300)}`);
   }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = "";
-  let full = "";
+  let buffer = "", full = "";
 
   while (true) {
     const { value, done } = await reader.read();
@@ -445,15 +515,11 @@ async function callGemini(messages, onDelta) {
     buffer = lines.pop();
 
     for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const data = trimmed.slice(5).trim();
       try {
-        const json = JSON.parse(data);
-        const parts = json.candidates?.[0]?.content?.parts || [];
-        const delta = parts.map(p => p.text || "").join("");
-        if (delta) { full += delta; onDelta(full); }
-      } catch (_) { /* تجاهل */ }
+        const json = JSON.parse(line.trim());
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (text) { full += text; onDelta(full); }
+      } catch (_) {}
     }
   }
   return full;
@@ -467,13 +533,14 @@ async function send() {
   if (!text || state.streaming) return;
 
   state.streaming = true;
+  state.lastUserMsg = text;
   sendBtn.disabled = true;
+  regenBtn.disabled = true;
   inputEl.value = "";
   inputEl.style.height = "auto";
 
   addMessage("user", text, state.provider);
 
-  // بناء الرسائل مع الذاكرة
   const sys = sysPromptEl.value.trim();
   const history = state.history[state.provider];
   const messages = [];
@@ -486,7 +553,7 @@ async function send() {
 
   try {
     const onDelta = (partial) => {
-      aiContent.innerHTML = simpleMarkdown(partial);
+      aiContent.innerHTML = renderMarkdown(partial);
       chatEl.scrollTop = chatEl.scrollHeight;
     };
 
@@ -497,18 +564,18 @@ async function send() {
       reply = await callGemini(messages, onDelta);
     }
 
-    // حفظ في الذاكرة
+    if (!reply) reply = "(لم يُرجع النموذج أي رد)";
+
     state.history[state.provider].push({ role: "user", content: text });
     state.history[state.provider].push({ role: "assistant", content: reply });
 
-    // احتفظ بآخر 20 رسالة فقط لتقليل التوكنز
     if (state.history[state.provider].length > 20) {
-      state.history[state.provider] =
-        state.history[state.provider].slice(-20);
+      state.history[state.provider] = state.history[state.provider].slice(-20);
     }
 
+    regenBtn.disabled = false;
   } catch (err) {
-    aiContent.innerHTML = `<span style="color:#ff6b6b;">❌ ${escapeHTML(err.message)}</span>`;
+    aiContent.innerHTML = `<span style="color:var(--danger);">❌ ${escapeHTML(err.message)}</span>`;
     console.error(err);
   } finally {
     aiContent.classList.remove("cursor");
@@ -516,6 +583,20 @@ async function send() {
     sendBtn.disabled = false;
     inputEl.focus();
   }
+}
+
+/* =========================================================
+   إعادة التوليد
+========================================================= */
+async function regenerate() {
+  if (!state.lastUserMsg || state.streaming) return;
+  // إزالة آخر رد من السجل وعرضه
+  const msgs = chatEl.querySelectorAll(".msg");
+  if (msgs.length > 0) msgs[msgs.length - 1].remove();
+  state.history[state.provider].pop(); // حذف آخر رد AI
+  state.history[state.provider].pop(); // حذف آخر رسالة مستخدم
+  state.lastUserMsg = null;
+  send(); // إعادة إرسال
 }
 
 /* =========================================================
@@ -528,49 +609,36 @@ providerEl.addEventListener("change", () => {
   saveSettings();
   renderHistory();
 });
-
 modelEl.addEventListener("change", () => {
   state.model = modelEl.value;
   saveSettings();
 });
-
-$("settingsBtn").addEventListener("click", () => {
-  settingsEl.classList.toggle("open");
-});
-
+$("settingsBtn").addEventListener("click", () => settingsEl.classList.toggle("open"));
 $("clearBtn").addEventListener("click", () => {
   if (!confirm("سيتم مسح المحادثة الحالية. متابعة؟")) return;
   state.history[state.provider] = [];
+  state.lastUserMsg = null;
+  regenBtn.disabled = true;
   chatEl.innerHTML = "";
   const empty = document.createElement("div");
   empty.className = "empty";
   empty.id = "empty";
-  empty.innerHTML = `<h2>ابدأ المحادثة 👋</h2>
-    <p>اختر المزوّد من الأعلى، ثم اكتب رسالتك بالأسفل.</p>`;
+  empty.innerHTML = `<h2>محادثة جديدة مع ${state.provider === "gemini" ? "Gemini" : "DeepSeek"} 👋</h2><p>اكتب رسالتك للبدء.</p>`;
   chatEl.appendChild(empty);
 });
-
+regenBtn.addEventListener("click", regenerate);
 sendBtn.addEventListener("click", send);
-
 inputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    send();
-  }
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
-
 inputEl.addEventListener("input", () => {
   inputEl.style.height = "auto";
   inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + "px";
 });
-
 dsKeyEl.addEventListener("change", saveSettings);
 gmKeyEl.addEventListener("change", saveSettings);
 sysPromptEl.addEventListener("change", saveSettings);
 
-/* =========================================================
-   إعادة رسم سجل المحادثة عند تغيير المزوّد
-========================================================= */
 function renderHistory() {
   chatEl.innerHTML = "";
   const history = state.history[state.provider];
@@ -578,15 +646,14 @@ function renderHistory() {
     const empty = document.createElement("div");
     empty.className = "empty";
     empty.id = "empty";
-    empty.innerHTML = `<h2>محادثة جديدة مع ${state.provider === "gemini" ? "Gemini" : "DeepSeek"}</h2>
-      <p>اكتب رسالتك للبدء.</p>`;
+    empty.innerHTML = `<h2>محادثة جديدة مع ${state.provider === "gemini" ? "Gemini" : "DeepSeek"} 👋</h2><p>اكتب رسالتك للبدء.</p>`;
     chatEl.appendChild(empty);
     return;
   }
   history.forEach(m => {
-    addMessage(m.role === "user" ? "user" : "assistant",
-               m.content, state.provider);
+    addMessage(m.role === "user" ? "user" : "assistant", m.content, state.provider);
   });
+  regenBtn.disabled = false;
 }
 
 /* =========================================================
