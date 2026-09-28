@@ -1,0 +1,71 @@
+<!DOCTYPE html> <html lang=
+"ar" dir=
+"rtl"> <head> <meta charset=
+"UTF-8"> <meta name=
+"viewport"
+content=
+"width=device-width, initial-scale=1.0"> <title>منصة موجة البيان للدعم الفني</title> <style> body { font-family:
+system-ui, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; display: flex; flex-direction: column;
+height: 100vh; } header { padding: 1rem 1.5rem; background: #1e293b; border-bottom: 1px solid #334155; font-
+size: 1.15rem; font-weight: bold; } main { flex: 1; display: flex; flex-direction: column; max-width: 900px;
+width: 100%; margin: 0 auto; padding: 1rem; overflow: hidden; } #chat { flex: 1; overflow-y: auto; display:
+flex; flex-direction: column; gap: 1rem; padding: 0.5rem; } .msg { padding: 12px 16px; border-radius: 12px; max-
+width: 82%; line-height: 1.6; font-size: 0.95rem; } .bot { background: #1e293b; align-self: flex-start; border:
+1px solid #334155; } .user { background: #2563eb; color: #fff; align-self: flex-end; } .sources { font-size:
+0.8rem; margin-top: 8px; border-top: 1px dashed #475569; padding-top: 6px; } .sources a { color: #60a5fa; text-
+decoration: none; margin-left: 8px; display: inline-block; } .input-bar { display: flex; gap: 8px; padding:
+1rem; background: #1e293b; border-top: 1px solid #334155; } input { flex: 1; padding: 12px; border-radius: 8px;
+border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; } button { padding: 0 20px; border:
+none; background: #2563eb; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; } </style>
+</head> <body> <header>
+=header> <main> <div id/<منصة موجة البيان | المساعد الذكي لدعم العمﻼء
+"chat"> <div class=
+أهﻼً>"msg bot"
+ة حول نماذج
+فساراتك الموثق
+ة است
+قنيات البرمجية Gemini API بك في منصة موجة البيان! أنا جاهز لﻺجابة عن كاف
+والت
+.</div> </div> <div class=
+"input-bar">
+<input type=
+"text" id=
+"query" placeholder=
+هنا"
+فسارك
+...اكتب است
+" onkeydown=
+"if(event.key===
+'Enter') send()"> <button
+onclick=
+"send()">إرسال</button> </div> </main> <script> async function send() { const input =
+document.getElementById('query'); const chat = document.getElementById('chat'); const text = input.value.trim();
+if(!text) return; chat.innerHTML +=
+`<div class=
+"msg user">${text}</div>`
+; input.value =
+''
+; chat.scrollTop =
+chat.scrollHeight; try { const res = await fetch('/api/chat'
+, { method:
+'POST'
+, headers: {'Content-Type'
+:
+'application/json'}, body: JSON.stringify({query: text}) }); const data = await res.json(); let srcHtml =
+data.sources?.map(s => `<a href=
+"${s.url}" target=
+"
+_
+blank">🔗 ${s.title}</a>`).join(' ') || ''
+; chat.innerHTML
+=+
+`<div class=
+"msg bot">${data.answer}<div class=
+"sources">${srcHtml}</div></div>`
+; } catch(e) { chat.innerHTML
+=+
+`<div class=
+"msg bot">ًتعذر اﻻتصال بالخادم، يرجى المحاولة ﻻحقﺎ.</div>`
+; } chat.scrollTop = chat.scrollHeight; } </script>
+</body> </html>
+🌊
