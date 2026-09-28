@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>محادثة موحّدة — Gemini + DeepSeek</title>
+<title>موجة البيان — محادثة موحّدة</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -20,6 +19,7 @@
     --ai: #1f2433;
     --danger: #ff6b6b;
     --success: #34d399;
+    --gold: #fbbf24;
   }
   body {
     font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
@@ -31,7 +31,83 @@
     overflow: hidden;
   }
 
-  /* Header */
+  /* ============ LANDING PAGE ============ */
+  .landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+    padding: 20px;
+    animation: fadeIn .5s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .landing-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(79, 140, 255, 0.3);
+  }
+  .landing h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .landing .subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 32px;
+    max-width: 500px;
+    line-height: 1.8;
+  }
+  .landing .tagline {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 24px;
+    opacity: 0.6;
+  }
+
+  .suggested-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    max-width: 700px;
+    width: 100%;
+  }
+  .suggested-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: right;
+  }
+  .suggested-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(79, 140, 255, 0.15);
+  }
+  .suggested-card .icon { font-size: 22px; margin-bottom: 8px; }
+  .suggested-card .label { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .suggested-card .desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* ============ CHAT VIEW ============ */
+  .chat-view { display: none; flex-direction: column; height: 100vh; }
+  .chat-view.active { display: flex; }
+  .landing.hidden { display: none; }
+
   header {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
@@ -75,7 +151,6 @@
   button:disabled { opacity: .5; cursor: not-allowed; }
   button.danger { background: var(--danger); border-color: var(--danger); }
 
-  /* Settings Panel */
   .settings {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
@@ -90,7 +165,7 @@
   .settings input { width: 100%; }
   .warning {
     font-size: 11px;
-    color: #fbbf24;
+    color: var(--gold);
     padding: 6px 10px;
     background: rgba(251, 191, 36, 0.1);
     border-radius: 6px;
@@ -98,7 +173,6 @@
     width: 100%;
   }
 
-  /* Chat Area */
   main {
     flex: 1;
     overflow-y: auto;
@@ -114,10 +188,10 @@
     border-radius: 12px;
     line-height: 1.7;
     word-wrap: break-word;
-    animation: fade .2s ease-out;
+    animation: fadeMsg .2s ease-out;
     position: relative;
   }
-  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  @keyframes fadeMsg { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .msg.user {
     align-self: flex-start;
     background: var(--user);
@@ -190,7 +264,6 @@
   }
   .empty h2 { color: var(--text); font-size: 20px; margin-bottom: 10px; }
 
-  /* Footer */
   footer {
     background: var(--panel);
     border-top: 1px solid var(--border);
@@ -208,80 +281,119 @@
   }
   footer .send { padding: 12px 20px; }
 
-  /* Loading indicator */
-  .loading-dots {
-    display: inline-flex;
-    gap: 4px;
-    padding: 4px 0;
-  }
-  .loading-dots span {
-    width: 6px;
-    height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: dotPulse 1.2s infinite;
-  }
-  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes dotPulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
-
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 8px; }
 
   @media (max-width: 600px) {
     .msg { max-width: 95%; }
     header h1 { font-size: 14px; }
+    .suggested-grid { grid-template-columns: 1fr 1fr; }
   }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🤖 محادثة موحّدة</h1>
-  <span class="badge" id="providerBadge">DeepSeek</span>
-  <div class="spacer"></div>
-  <select id="provider">
-    <option value="deepseek">DeepSeek</option>
-    <option value="gemini">Gemini</option>
-  </select>
-  <select id="model"></select>
-  <button class="ghost" id="regenerateBtn" disabled>🔄 إعادة</button>
-  <button class="ghost" id="settingsBtn">⚙️ الإعدادات</button>
-  <button class="ghost danger" id="clearBtn">🗑️ مسح</button>
-</header>
+<!-- ============ صفحة الهبوط — منصة موجة البيان ============ -->
+<div class="landing" id="landingPage">
+  <div class="landing-logo">🌊</div>
+  <h1>منصة موجة البيان</h1>
+  <p class="subtitle">
+    منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek.
+    اختر سؤالاً مقترحًا أو ابدأ محادثتك مباشرة.
+  </p>
 
-<section class="settings" id="settings">
-  <div class="field">
-    <label>DeepSeek API Key</label>
-    <input type="password" id="dsKey" placeholder="sk-..." />
+  <div class="suggested-grid">
+    <div class="suggested-card" onclick="startChat('ما هي نماذج Gemini المتاحة حاليًا وما الفرق بينها؟')">
+      <div class="icon">✨</div>
+      <div class="label">النماذج المتوفرة</div>
+      <div class="desc">تعرف على أحدث إصدارات Gemini ومقارنتها</div>
+    </div>
+    <div class="suggested-card" onclick="startChat('كيف أبدأ استخدام Gemini مع Python؟ أعطني مثال عملي.')">
+      <div class="icon">🐍</div>
+      <div class="label">البدء مع Python</div>
+      <div class="desc">مثال عملي لربط Gemini بـ Python</div>
+    </div>
+    <div class="suggested-card" onclick="startChat('ما الفرق بين Gemini Flash و Pro من حيث الأداء والسعر؟')">
+      <div class="icon">⚡</div>
+      <div class="label">Flash vs Pro</div>
+      <div class="desc">مقارنة شاملة بين النماذج</div>
+    </div>
+    <div class="suggested-card" onclick="startChat('ما هي حدود الاستخدام والأسعار لكل نموذج من نماذج Gemini؟')">
+      <div class="icon">📊</div>
+      <div class="label">الحدود والأسعار</div>
+      <div class="desc">تفاصيل الأسعار والقيود لكل نموذج</div>
+    </div>
   </div>
-  <div class="field">
-    <label>Gemini API Key</label>
-    <input type="password" id="gmKey" placeholder="AIza..." />
-  </div>
-  <div class="field">
-    <label>System Prompt (اختياري)</label>
-    <input type="text" id="sysPrompt" value="أنت مساعد ذكي. أجب بالعربية بوضوح وإيجاز." />
-  </div>
-  <div class="warning">
-    ⚠️ المفاتيح تُحفظ محليًا على جهازك فقط. لا تشاركها مع أحد.
-  </div>
-</section>
 
-<main id="chat">
-  <div class="empty" id="empty">
-    <h2>ابدأ المحادثة 👋</h2>
-    <p>اختر المزوّد من الأعلى، ثم اكتب رسالتك بالأسفل.</p>
-    <p style="font-size:12px;">لا تنسَ إضافة مفاتيح API من ⚙️ الإعدادات.</p>
-  </div>
-</main>
+  <p class="tagline">Powered by Gemini 3.8 Flash • موجة البيان © 2026</p>
+</div>
 
-<footer>
-  <textarea id="input" rows="1" placeholder="اكتب رسالتك... (Enter للإرسال، Shift+Enter لسطر جديد)"></textarea>
-  <button class="send" id="sendBtn">إرسال</button>
-</footer>
+<!-- ============ واجهة المحادثة ============ -->
+<div class="chat-view" id="chatView">
+  <header>
+    <button class="ghost" id="backBtn" style="font-size:18px;">→</button>
+    <h1>🤖 محادثة موحّدة</h1>
+    <span class="badge" id="providerBadge">DeepSeek</span>
+    <div class="spacer"></div>
+    <select id="provider">
+      <option value="deepseek">DeepSeek</option>
+      <option value="gemini">Gemini</option>
+    </select>
+    <select id="model"></select>
+    <button class="ghost" id="regenerateBtn" disabled>🔄 إعادة</button>
+    <button class="ghost" id="settingsBtn">⚙️ الإعدادات</button>
+    <button class="ghost danger" id="clearBtn">🗑️ مسح</button>
+  </header>
+
+  <section class="settings" id="settings">
+    <div class="field">
+      <label>DeepSeek API Key</label>
+      <input type="password" id="dsKey" placeholder="sk-..." />
+    </div>
+    <div class="field">
+      <label>Gemini API Key</label>
+      <input type="password" id="gmKey" placeholder="AIza..." />
+    </div>
+    <div class="field">
+      <label>System Prompt (اختياري)</label>
+      <input type="text" id="sysPrompt" value="أنت مساعد ذكي متخصص في دعم نماذج الذكاء الاصطناعي. أجب بالعربية بوضوح وإيجاز." />
+    </div>
+    <div class="warning">
+      ⚠️ المفاتيح تُحفظ محليًا على جهازك فقط. لا تشاركها مع أحد.
+    </div>
+  </section>
+
+  <main id="chat">
+    <div class="empty" id="empty">
+      <h2>ابدأ المحادثة 👋</h2>
+      <p>اختر المزوّد من الأعلى، ثم اكتب رسالتك بالأسفل.</p>
+      <p style="font-size:12px;">لا تنسَ إضافة مفاتيح API من ⚙️ الإعدادات.</p>
+    </div>
+  </main>
+
+  <footer>
+    <textarea id="input" rows="1" placeholder="اكتب رسالتك... (Enter للإرسال، Shift+Enter لسطر جديد)"></textarea>
+    <button class="send" id="sendBtn">إرسال</button>
+  </footer>
+</div>
 
 <script>
+/* =========================================================
+   التنقل بين الصفحات
+========================================================= */
+function startChat(question) {
+  document.getElementById("landingPage").classList.add("hidden");
+  document.getElementById("chatView").classList.add("active");
+  if (question) {
+    document.getElementById("input").value = question;
+    send();
+  }
+}
+function goBack() {
+  document.getElementById("landingPage").classList.remove("hidden");
+  document.getElementById("chatView").classList.remove("active");
+}
+
 /* =========================================================
    النماذج المتاحة
 ========================================================= */
@@ -291,8 +403,8 @@ const MODELS = {
     { id: "deepseek-reasoner", name: "DeepSeek Reasoner" }
   ],
   gemini: [
-    { id: "gemini-2.0-flash",       name: "Gemini 2.0 Flash" },
-    { id: "gemini-2.0-pro-exp-02-05", name: "Gemini 2.0 Pro (Experimental)" }
+    { id: "gemini-3.8-flash",       name: "Gemini 3.8 Flash" },
+    { id: "gemini-3.8-flash-lite",  name: "Gemini 3.8 Flash Lite" }
   ]
 };
 
@@ -331,7 +443,7 @@ function loadSettings() {
   dsKeyEl.value = localStorage.getItem("dsKey") || "";
   gmKeyEl.value = localStorage.getItem("gmKey") || "";
   sysPromptEl.value = localStorage.getItem("sysPrompt") ||
-    "أنت مساعد ذكي. أجب بالعربية بوضوح وإيجاز.";
+    "أنت مساعد ذكي متخصص في دعم نماذج الذكاء الاصطناعي. أجب بالعربية بوضوح وإيجاز.";
   const p = localStorage.getItem("provider");
   const m = localStorage.getItem("model");
   if (p && MODELS[p]) state.provider = p;
@@ -390,7 +502,7 @@ function addMessage(role, text, provider) {
   meta.textContent = role === "user" ? "أنت" :
     (provider === "gemini" ? "Gemini" : "DeepSeek");
 
-  // زر النسخ للردود
+  // زر النسخ
   if (role !== "user") {
     const copyBtn = document.createElement("button");
     copyBtn.className = "copy-btn";
@@ -471,7 +583,6 @@ async function callGemini(messages, onDelta) {
   const key = gmKeyEl.value.trim();
   if (!key) throw new Error("مفتاح Gemini API غير موجود. أضفه من الإعدادات.");
 
-  // تحويل السجل إلى صيغة Gemini contents[]
   const contents = [];
   for (const m of messages) {
     if (m.role === "system") continue;
@@ -590,18 +701,18 @@ async function send() {
 ========================================================= */
 async function regenerate() {
   if (!state.lastUserMsg || state.streaming) return;
-  // إزالة آخر رد من السجل وعرضه
   const msgs = chatEl.querySelectorAll(".msg");
   if (msgs.length > 0) msgs[msgs.length - 1].remove();
-  state.history[state.provider].pop(); // حذف آخر رد AI
-  state.history[state.provider].pop(); // حذف آخر رسالة مستخدم
+  state.history[state.provider].pop();
+  state.history[state.provider].pop();
   state.lastUserMsg = null;
-  send(); // إعادة إرسال
+  send();
 }
 
 /* =========================================================
    الأحداث
 ========================================================= */
+$("backBtn").addEventListener("click", goBack);
 providerEl.addEventListener("change", () => {
   state.provider = providerEl.value;
   state.model = MODELS[state.provider][0].id;
@@ -665,7 +776,6 @@ function renderHistory() {
   refreshModels();
   modelEl.value = state.model;
   renderHistory();
-  inputEl.focus();
 })();
 </script>
 </body>
