@@ -13,78 +13,141 @@ body{
   display:flex;justify-content:center;
   padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
 }
-.app{width:100%;max-width:520px;min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 20px;text-align:center}
 .hidden{display:none!important}
 
+/* الرئيسية */
+#home{width:100%;max-width:520px;min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 20px;text-align:center}
 .logo{width:104px;height:104px;border-radius:30px;background:linear-gradient(135deg,#4f8cff,#7c3aed);display:grid;place-items:center;font-size:50px;box-shadow:0 0 70px rgba(79,140,255,.28);margin-bottom:26px}
-.logo.sm{width:72px;height:72px;font-size:34px;border-radius:22px;margin-bottom:18px}
 h1{font-size:34px;font-weight:800;margin-bottom:18px;background:linear-gradient(90deg,#5b8cff,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
 .desc{color:#a3a8b8;font-size:17px;line-height:2;margin-bottom:34px}
-
-/* الدخول */
-#login{width:100%}
-.box{width:100%;background:#171a24;border:1px solid #272c3b;border-radius:24px;padding:22px;text-align:right}
-.tabs{display:flex;background:#0f1117;border-radius:14px;padding:4px;margin-bottom:18px}
-.tab{flex:1;padding:11px;border:0;background:none;color:#8a90a3;font:inherit;font-size:15px;font-weight:700;border-radius:11px;cursor:pointer}
-.tab.on{background:linear-gradient(135deg,#4f8cff,#7c3aed);color:#fff}
-label{display:block;font-size:14px;color:#a3a8b8;margin:12px 0 6px}
-input{width:100%;background:#0f1117;border:1px solid #272c3b;border-radius:14px;padding:14px 16px;font:inherit;font-size:16px;color:#f3f4f8;outline:none;direction:ltr;text-align:right}
-input:focus{border-color:#5b6cff}
-.btn{width:100%;margin-top:20px;padding:15px;border:0;border-radius:14px;background:linear-gradient(135deg,#4f8cff,#7c3aed);color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer}
-.btn:active{transform:scale(.98)}
-.err{color:#ff7a7a;font-size:14px;margin-top:12px;min-height:18px}
-.guest{margin-top:16px;background:none;border:0;color:#8a90a3;font:inherit;font-size:15px;cursor:pointer;text-decoration:underline}
-
-/* الرئيسية */
-#home{width:100%}
-.bar{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#a3a8b8;font-size:15px}
-.out{background:#171a24;border:1px solid #272c3b;color:#f3f4f8;border-radius:12px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
 .grid{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.card{background:#171a24;border:1px solid #272c3b;border-radius:24px;padding:20px;text-align:right;min-height:170px;cursor:pointer;transition:transform .15s,border-color .15s}
+.card{background:#171a24;border:1px solid #272c3b;border-radius:24px;padding:20px;text-align:right;min-height:170px;cursor:pointer;color:inherit;font:inherit;transition:transform .15s,border-color .15s}
 .card:active{transform:scale(.97)}
 .card:hover{border-color:#5b6cff}
 .card .ic{font-size:32px;display:block;margin-bottom:14px}
 .card b{display:block;font-size:19px;font-weight:700;margin-bottom:8px}
 .card span{display:block;color:#7c8294;font-size:15px;line-height:1.7}
 .foot{margin-top:34px;color:#5f6577;font-size:15px;direction:ltr}
+
+/* الدردشة */
+#chat{width:100%;max-width:520px;height:100%;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #272c3b}
+.back{width:40px;height:40px;border-radius:12px;border:1px solid #272c3b;background:#171a24;color:#f3f4f8;font-size:20px;cursor:pointer}
+.mini{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#4f8cff,#7c3aed);display:grid;place-items:center;font-size:19px}
+.top b{font-size:17px}
+.top small{display:block;color:#7c8294;font-size:12px}
+#msgs{flex:1;overflow-y:auto;padding:16px}
+.m{max-width:85%;padding:12px 16px;border-radius:18px;margin:10px 0;line-height:1.9;font-size:16px;white-space:pre-wrap;animation:in .25s}
+.me{background:linear-gradient(135deg,#4f8cff,#7c3aed);color:#fff;border-end-end-radius:4px;margin-inline-end:auto}
+.bot{background:#1c202d;border:1px solid #272c3b;border-end-start-radius:4px;margin-inline-start:auto}
+.bot code{direction:ltr;display:block;text-align:left;background:#0f1117;border-radius:10px;padding:10px;margin-top:8px;font-size:13px;white-space:pre;overflow-x:auto}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}
+form{display:flex;gap:10px;padding:12px 16px 14px;border-top:1px solid #272c3b}
+input{flex:1;min-width:0;background:#171a24;border:1px solid #272c3b;border-radius:16px;padding:14px 16px;font:inherit;font-size:16px;color:#f3f4f8;outline:none}
+input:focus{border-color:#5b6cff}
+.send{width:52px;border:0;border-radius:16px;background:linear-gradient(135deg,#4f8cff,#7c3aed);color:#fff;font-size:20px;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- شاشة الدخول -->
-  <section id="login">
-    <div class="logo sm" style="margin-inline:auto">🌊</div>
-    <h1 style="font-size:28px;margin-bottom:8px">منصة موجة البيان</h1>
-    <p class="desc" style="font-size:15px;margin-bottom:22px">سجّل دخولك عشان تبدأ محادثتك.</p>
+<!-- الشاشة الرئيسية -->
+<section id="home">
+  <div class="logo">🌊</div>
+  <h1>منصة موجة البيان</h1>
+  <p class="desc">
+    منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek. اختر سؤالاً مقترحًا أو ابدأ محادثتك مباشرة.
+  </p>
 
-    <div class="box">
-      <div class="tabs">
-        <button class="tab on" id="tIn" type="button">تسجيل الدخول</button>
-        <button class="tab" id="tUp" type="button">حساب جديد</button>
-      </div>
-      <form id="form" autocomplete="on">
-        <div id="nameRow" class="hidden">
-          <label for="name">الاسم</label>
-          <input id="name" type="text" autocomplete="name" style="direction:rtl">
-        </div>
-        <label for="email">البريد الإلكتروني</label>
-        <input id="email" type="email" autocomplete="email" placeholder="name@example.com">
-        <label for="pass">كلمة المرور</label>
-        <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••">
-        <div class="err" id="err"></div>
-        <button class="btn" id="go" type="submit">دخول</button>
-      </form>
-    </div>
-    <button class="guest" id="guest" type="button">المتابعة كزائر</button>
-  </section>
+  <div class="grid">
+    <button class="card" data-k="models"><span class="ic">✨</span><b>النماذج المتوفرة</b><span>تعرف على أحدث إصدارات Gemini ومقارنتها</span></button>
+    <button class="card" data-k="python"><span class="ic">🐍</span><b>البدء مع Python</b><span>مثال عملي لربط Gemini بـ Python</span></button>
+    <button class="card" data-k="flash"><span class="ic">⚡</span><b>Flash vs Pro</b><span>مقارنة شاملة بين النماذج</span></button>
+    <button class="card" data-k="limits"><span class="ic">📊</span><b>الحدود والأسعار</b><span>تفاصيل الأسعار والقيود لكل نموذج</span></button>
+  </div>
 
-  <!-- الشاشة الرئيسية -->
-  <section id="home" class="hidden">
-    <div class="bar">
-      <span id="hi"></span>
-      <button class="out" id="out" type="button">خروج</button>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:center">
-      <div class="logo">🌊</div>
-      <h1>منصة موجة البيان</h1>
+  <div class="foot">2026 © موجة البيان • Powered by Gemini 3.8 Flash</div>
+</section>
+
+<!-- شاشة الدردشة -->
+<section id="chat" class="hidden">
+  <div class="top">
+    <button class="back" id="back" aria-label="رجوع">→</button>
+    <div class="mini">🌊</div>
+    <div><b>موجة البيان</b><small id="sub">متصل</small></div>
+  </div>
+  <div id="msgs"></div>
+  <form id="f" autocomplete="off">
+    <input id="i" placeholder="اكتب رسالتك…" aria-label="رسالتك">
+    <button class="send" aria-label="إرسال">➤</button>
+  </form>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const msgs = $('msgs');
+
+/* سؤال كل زر + رده التجريبي (غيّرها لردودك أو اربطها بالـ API) */
+const topics = {
+  models: {
+    q: 'وش النماذج المتوفرة؟',
+    a: 'النماذج المتوفرة حاليًا:\n• Gemini Flash: سريع وخفيف\n• Gemini Pro: أقوى بالتحليل والمهام المعقدة\n• DeepSeek: بديل مفتوح للمقارنة'
+  },
+  python: {
+    q: 'كيف أبدأ مع Python؟',
+    a: 'ثبّت المكتبة ثم جرّب هذا المثال:',
+    code: 'pip install google-genai\n\nfrom google import genai\nclient = genai.Client(api_key="YOUR_KEY")\nr = client.models.generate_content(\n    model="gemini-flash",\n    contents="هلا")\nprint(r.text)'
+  },
+  flash: {
+    q: 'وش الفرق بين Flash و Pro؟',
+    a: 'Flash: أسرع وأرخص، ممتاز للمحادثات والمهام اليومية.\nPro: أدق وأعمق، مناسب للتحليل والبرمجة الطويلة والمهام الصعبة.'
+  },
+  limits: {
+    q: 'وش الحدود والأسعار؟',
+    a: 'الحدود والأسعار تختلف حسب النموذج والخطة (طلبات بالدقيقة، حد التوكنز، سعر الإدخال والإخراج). راجع صفحة الأسعار الرسمية للأرقام المحدثة.'
+  }
+};
+
+function add(text, cls, code){
+  const d = document.createElement('div');
+  d.className = 'm ' + cls;
+  d.textContent = text;
+  if(code){ const c = document.createElement('code'); c.textContent = code; d.appendChild(c); }
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+
+function open(){ $('home').classList.add('hidden'); $('chat').classList.remove('hidden'); }
+function close(){ $('chat').classList.add('hidden'); $('home').classList.remove('hidden'); msgs.innerHTML = ''; }
+
+function reply(t, code){
+  const w = add('…', 'bot');
+  setTimeout(() => {
+    w.textContent = t;
+    if(code){ const c = document.createElement('code'); c.textContent = code; w.appendChild(c); }
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 700);
+}
+
+document.querySelectorAll('.card').forEach(b => {
+  b.addEventListener('click', () => {
+    const t = topics[b.dataset.k];
+    open();
+    add(t.q, 'me');
+    reply(t.a, t.code);
+  });
+});
+
+$('back').onclick = close;
+
+$('f').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('i').value.trim();
+  if(!v) return;
+  $('i').value = '';
+  add(v, 'me');
+  reply('هذا رد تجريبي. اربط الواجهة بالـ API عشان تجيك ردود حقيقية.');
+});
+</script>
+</body>
+</html>
