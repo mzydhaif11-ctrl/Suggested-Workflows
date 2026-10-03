@@ -1,978 +1,476 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>منصة موجة البيان | الدعم الفني للذكاء الاصطناعي</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>منصة موجة البيان | الدعم الفني لنماذج الذكاء الاصطناعي</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-
   <style>
-    /* ---------------- المتغيرات والألوان (ليلي ونهاري) ---------------- */
-    :root[data-theme="dark"] {
-      --bg-body: #070a12;
-      --bg-surface: #0e1322;
-      --bg-card: #141a2c;
-      --bg-input: #101626;
-      --border: #22293d;
-      --border-hover: #3b82f6;
-      --text: #f8fafc;
-      --text-muted: #8e97af;
-      --primary: #4f8cff;
-      --primary-hover: #3b82f6;
-      --primary-gradient: linear-gradient(135deg, #4f8cff, #7c3aed);
-      --accent-pin: #f59e0b;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    :root {
+      --bg-dark: #07090e;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-hover: rgba(30, 41, 59, 0.95);
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: rgba(51, 65, 85, 0.6);
     }
-
-    :root[data-theme="light"] {
-      --bg-body: #f8fafc;
-      --bg-surface: #ffffff;
-      --bg-card: #ffffff;
-      --bg-input: #f1f5f9;
-      --border: #e2e8f0;
-      --border-hover: #6366f1;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --primary-gradient: linear-gradient(135deg, #4f46e5, #7c3aed);
-      --accent-pin: #d97706;
-      --shadow: 0 10px 25px rgba(100, 116, 139, 0.12);
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Tajawal', sans-serif;
       -webkit-tap-highlight-color: transparent;
-      transition: background-color 0.25s ease, border-color 0.25s ease;
     }
-
     body {
-      background: var(--bg-body);
-      color: var(--text);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      padding: env(safe-area-inset-top, 10px) 12px env(safe-area-inset-bottom, 10px);
+      align-items: center;
+      padding: 16px;
+      overflow-x: hidden;
     }
-
-    .hidden { display: none !important; }
-
-    /* ---------------- إطار المنصة الرئيسي ---------------- */
-    .app-wrapper {
+    /* Mobile frame container simulating realistic mobile viewport */
+    .app-viewport {
       width: 100%;
-      max-width: 500px;
+      max-width: 412px;
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 44px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px -10px var(--primary-glow);
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       position: relative;
     }
-
-    /* ---------------- شريط التنقل العلوي ---------------- */
-    header {
+    /* Status bar */
+    .status-bar {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      padding: 12px 14px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      margin-bottom: 16px;
-      box-shadow: var(--shadow);
-    }
-
-    .header-right {
-      display: flex;
       align-items: center;
-      gap: 8px;
-      position: relative;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-icon {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 7px 11px;
-      border-radius: 12px;
-      cursor: pointer;
+      padding: 14px 24px 6px;
       font-size: 13px;
       font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      color: #e2e8f0;
+      user-select: none;
     }
-    .btn-icon:hover { border-color: var(--border-hover); }
-
-    /* قائمة الخيارات المنبثقة = */
-    .dropdown-menu {
-      display: none;
-      position: absolute;
-      top: 46px;
-      right: 0;
-      width: 220px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-      padding: 6px;
-      z-index: 100;
-      text-align: right;
-    }
-    .dropdown-menu.show { display: block; animation: dropIn 0.2s ease; }
-    .dropdown-item {
-      width: 100%;
-      padding: 9px 12px;
-      background: transparent;
-      border: none;
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 600;
-      border-radius: 10px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      text-align: right;
-    }
-    .dropdown-item:hover { background: var(--bg-input); }
-    @keyframes dropIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* زر تبديل الوضع النهاري / الليلي */
-    .theme-toggle {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: 15px;
-    }
-
-    /* ---------------- المحتوى والواجهة ---------------- */
-    .hero {
-      text-align: center;
-      padding: 10px 10px 16px;
-    }
-    .logo-container {
-      width: 86px;
-      height: 86px;
-      border-radius: 26px;
-      background: var(--primary-gradient);
-      display: grid;
-      place-items: center;
-      font-size: 42px;
-      margin: 0 auto 14px;
-      box-shadow: 0 12px 30px rgba(79, 140, 255, 0.35);
-      cursor: pointer;
-    }
-    h1 {
-      font-size: 26px;
-      font-weight: 900;
-      margin-bottom: 8px;
-      background: var(--primary-gradient);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-    .hero p {
-      font-size: 13.5px;
-      color: var(--text-muted);
-      line-height: 1.8;
-      max-width: 380px;
-      margin: 0 auto;
-    }
-
-    /* ---------------- شريط لوحة التحكم فوق البطاقات ---------------- */
-    .dashboard-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 4px;
-      margin-bottom: 10px;
-      font-size: 12px;
-    }
-    .dashboard-toolbar b { color: var(--text); }
-    .btn-customize {
-      background: transparent;
-      border: 1px dashed var(--accent-pin);
-      color: var(--accent-pin);
-      padding: 5px 10px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 700;
+    .status-left {
       display: flex;
       align-items: center;
       gap: 5px;
+      direction: ltr;
     }
-    .btn-customize:hover { background: rgba(245, 158, 11, 0.1); }
-
-    /* ---------------- شبكة بطاقات الخدمات (ActionCards) ---------------- */
-    .grid-cards {
+    .battery {
+      width: 20px;
+      height: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      padding: 1px;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .battery::after {
+      content: '';
+      position: absolute;
+      right: -3px;
+      width: 2px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 0 1px 1px 0;
+    }
+    .battery-level {
+      height: 100%;
+      width: 70%;
+      background: #e2e8f0;
+      border-radius: 1px;
+    }
+    /* App Header and Hero */
+    .hero-section {
+      padding: 24px 20px 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .wave-badge-container {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      margin-bottom: 22px;
+    }
+    .wave-glow {
+      position: absolute;
+      inset: -6px;
+      background: radial-gradient(circle, #6366f1 0%, #a855f7 50%, transparent 75%);
+      filter: blur(14px);
+      opacity: 0.75;
+      border-radius: 32px;
+    }
+    .wave-badge {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(145deg, #7c3aed, #4f46e5);
+      border-radius: 28px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .app-title {
+      font-size: 26px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #60a5fa 10%, #a5b4fc 60%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+    .app-description {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #94a3b8;
+      max-width: 340px;
+      margin-bottom: 24px;
+    }
+    /* 4 Grid Cards */
+    .cards-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 18px;
+      padding: 0 16px 20px;
     }
-    .service-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
+    .action-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 20px;
-      padding: 16px 14px;
+      padding: 15px 14px;
       text-align: right;
-      min-height: 140px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      height: 132px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
-      box-shadow: var(--shadow);
     }
-    .service-card:hover {
-      border-color: var(--primary);
+    .action-card:hover {
+      background: var(--card-hover);
+      border-color: rgba(99, 102, 241, 0.5);
       transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     }
-    .service-card.is-pinned {
-      border-color: var(--accent-pin);
-      background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), var(--bg-card));
-    }
-    .card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .card-ic { font-size: 24px; }
-    .pin-badge {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent-pin);
-      border: 1px solid var(--accent-pin);
-      border-radius: 6px;
-      font-size: 9px;
-      font-weight: 700;
-      padding: 2px 5px;
+    .card-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
     }
     .card-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
-      margin-bottom: 3px;
-      display: block;
-      color: var(--text);
+      color: #f1f5f9;
+      margin-bottom: 4px;
     }
-    .card-desc {
+    .card-subtitle {
       font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      display: block;
+      color: #94a3b8;
+      line-height: 1.45;
     }
-
-    /* ---------------- شريط الإرسال السريع ومحاكاة التحميل ---------------- */
-    .quick-submit-bar {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 6px 8px 6px 12px;
+    /* Input prompt bar */
+    .prompt-bar-wrap {
+      padding: 0 16px 16px;
+    }
+    .prompt-bar {
       display: flex;
       align-items: center;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 8px 12px;
       gap: 8px;
-      box-shadow: var(--shadow);
-      margin-bottom: 12px;
     }
-    .quick-input {
+    .prompt-input {
       flex: 1;
       background: transparent;
       border: none;
-      color: var(--text);
-      font-size: 13.5px;
+      color: white;
+      font-size: 12.5px;
       outline: none;
     }
-    .btn-send {
-      padding: 10px 16px;
-      border-radius: 12px;
-      background: var(--primary-gradient);
-      color: #fff;
+    .prompt-input::placeholder {
+      color: #64748b;
+    }
+    .prompt-btn {
+      background: var(--primary);
       border: none;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-    .btn-send:hover:not(:disabled) { opacity: 0.95; }
-    .btn-send:disabled { opacity: 0.75; cursor: wait; }
-
-    /* دوران التحميل CSS Spinner */
-    .spinner {
-      width: 15px;
-      height: 15px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #ffffff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* شريط رسالة النجاح */
-    .success-badge {
-      display: none;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #10b981;
-      padding: 10px;
-      border-radius: 14px;
-      font-size: 13px;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 12px;
-      animation: zoomIn 0.3s ease;
-    }
-    .success-badge.show { display: block; }
-    @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-
-    footer {
-      text-align: center;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: auto;
-      padding: 14px 0;
-    }
-
-    /* ---------------- النوافذ المنبثقة التفاعلية (Modals) ---------------- */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(6px);
-      z-index: 200;
       justify-content: center;
-      align-items: center;
-      padding: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
     }
-    .modal-overlay.active { display: flex; }
-    .modal-box {
-      width: 100%;
-      max-width: 440px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 22px;
-      max-height: 85vh;
+    .prompt-btn:hover {
+      background: #4f46e5;
+    }
+    /* Footer */
+    .app-footer {
+      text-align: center;
+      padding: 12px 16px 24px;
+      font-size: 11px;
+      color: #64748b;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    /* Interactive Modal */
+    .modal-backdrop {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+      flex-direction: column;
+      justify-content: flex-end;
+      border-radius: 44px;
+      overflow: hidden;
+    }
+    .modal-backdrop.active {
+      display: flex;
+    }
+    .modal-content {
+      background: #0f1422;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 28px 28px 0 0;
+      padding: 20px;
+      max-height: 85%;
       overflow-y: auto;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
       text-align: right;
     }
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
       margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .modal-header h3 { font-size: 16px; font-weight: 800; }
     .close-btn {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+      background: #1e293b;
+      border: none;
+      color: #94a3b8;
       padding: 4px 10px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 12px;
     }
-
-    /* أسطر قائمة لوحة التحكم */
-    .dash-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 10px 12px;
-      margin-bottom: 8px;
-    }
-    .dash-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .dash-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 4px 8px;
-      border-radius: 8px;
-      font-size: 11px;
-      cursor: pointer;
-    }
-    .dash-btn.active {
-      background: var(--accent-pin);
-      color: #fff;
-      border-color: var(--accent-pin);
-    }
-
-    /* أكواد بايثون */
-    pre.code-box {
-      direction: ltr;
-      text-align: left;
-      background: #090c14;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
+    pre code {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 11.5px;
-      color: #a5b4fc;
+      font-size: 11px;
+      display: block;
+      background: #07090e;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
       overflow-x: auto;
+      color: #a5b4fc;
       margin: 10px 0;
-    }
-
-    /* شاشة الدردشة المتكاملة */
-    #chatScreen {
-      display: none;
-      flex-direction: column;
-      height: 100vh;
-      max-width: 500px;
-      margin: 0 auto;
-      width: 100%;
-    }
-    #chatMsgs {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px 4px;
-    }
-    .msg {
-      padding: 10px 14px;
-      border-radius: 16px;
-      margin: 8px 0;
-      font-size: 13.5px;
-      line-height: 1.8;
-      max-width: 85%;
-      white-space: pre-wrap;
-    }
-    .msg.me {
-      background: var(--primary-gradient);
-      color: #fff;
-      margin-right: auto;
-      border-bottom-left-radius: 4px;
-    }
-    .msg.bot {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      margin-left: auto;
-      border-bottom-right-radius: 4px;
+      text-align: left;
+      direction: ltr;
     }
   </style>
 </head>
 <body>
 
-  <!-- ================= الواجهة الرئيسية ================= -->
-  <div class="app-wrapper" id="homeView">
-    <!-- شريط التنقل العلوي -->
-    <header>
-      <div class="header-right">
-        <!-- زر الخيارات = في أعلى الصفحة على اليمين -->
-        <button class="btn-icon" onclick="toggleDropdown()" title="خيارات المنصة والحساب">
-          <span>☰</span>
-          <span style="font-size: 12px;">=</span>
-        </button>
-
-        <!-- زر تسجيل الدخول والحساب -->
-        <button class="btn-icon" onclick="openModal('authModal')">
-          <span>👤</span>
-          <span id="userNameLabel">تسجيل الدخول</span>
-        </button>
-
-        <!-- القائمة المنسدلة -->
-        <div class="dropdown-menu" id="dropdownMenu">
-          <button class="dropdown-item" onclick="openModal('dashboardModal'); toggleDropdown();">
-            <span>📌</span>
-            <span>لوحة التحكم الشخصية (ترتيب وتثبيت)</span>
-          </button>
-          <button class="dropdown-item" onclick="openModal('authModal'); toggleDropdown();">
-            <span>👤</span>
-            <span>حسابي والدخول</span>
-          </button>
-          <button class="dropdown-item" onclick="openModal('fastapiModal'); toggleDropdown();">
-            <span>🗄️</span>
-            <span>خادم FastAPI وقاعدة البيانات</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="header-left">
-        <!-- زر لوحة التحكم الشخصية السريع -->
-        <button class="btn-icon" onclick="openModal('dashboardModal')" style="color: var(--accent-pin); border-color: var(--accent-pin);" title="تخصيص وترتيب البطاقات">
-          <span>📌</span>
-          <span style="font-size: 11px;">لوحة التحكم</span>
-        </button>
-
-        <!-- زر تبديل الوضع الليلي / النهاري -->
-        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="تبديل الوضع الليلي والنهاري">
-          🌙
-        </button>
+  <!-- App Viewport -->
+  <main class="app-viewport">
+    
+    <!-- Status Bar -->
+    <header class="status-bar">
+      <div class="status-right" id="clock-display">٤:١٤</div>
+      <div class="status-left">
+        <div class="battery"><div class="battery-level"></div></div>
+        <span style="font-size: 10px;">70%</span>
+        <span>4G</span>
+        <span style="letter-spacing: -2px;">••••</span>
       </div>
     </header>
 
-    <!-- منطقة البطل والشعار -->
-    <div class="hero">
-      <div class="logo-container" onclick="openChatView()">🌊</div>
-      <h1>منصة موجة البيان</h1>
-      <p>منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek. رتّب خدماتك المفضلة وابدأ محادثتك فوراً.</p>
-    </div>
-
-    <!-- شريط لوحة التحكم الشخصية المباشر -->
-    <div class="dashboard-toolbar">
-      <b>بطاقات الخدمات الذكية:</b>
-      <button class="btn-customize" onclick="openModal('dashboardModal')">
-        <span>⚙️</span>
-        <span>تخصيص وترتيب البطاقات</span>
-      </button>
-    </div>
-
-    <!-- شبكة بطاقات الخدمات (يتم ترتيبها وتثبيتها برمجياً) -->
-    <div class="grid-cards" id="cardsContainer"></div>
-
-    <!-- نموذج الإرسال مع محاكاة التحميل لـ 3 ثوانٍ -->
-    <form class="quick-submit-bar" id="submitForm" onsubmit="handleSimulatedSubmit(event)">
-      <input type="text" id="promptInput" class="quick-input" placeholder="اكتب سؤالك لـ Gemini أو DeepSeek..." required />
-      <button type="submit" id="submitBtn" class="btn-send">
-        <span id="submitBtnText">إرسال</span>
-        <div id="submitSpinner" class="spinner" style="display: none;"></div>
-      </button>
-    </form>
-
-    <!-- شريط التنبيه عند نجاح الإرسال (3 ثوانٍ) -->
-    <div id="successNotice" class="success-badge">
-      ✓ تم الإرسال بنجاح (اكتمل التحميل خلال 3 ثوانٍ)
-    </div>
-
-    <footer>2026 © منصة موجة البيان • Powered by Gemini 3.8 Flash & FastAPI</footer>
-  </div>
-
-  <!-- ================= شاشة المحادثة الكاملة ================= -->
-  <div class="app-wrapper hidden" id="chatView">
-    <header>
-      <button class="btn-icon" onclick="closeChatView()">→ الرجوع للرئيسية</button>
-      <b style="font-size: 14px;">مستشار موجة البيان</b>
-      <span style="font-size: 11px; color: #10b981;">● متصل</span>
-    </header>
-    <div id="chatMsgs"></div>
-    <form class="quick-submit-bar" onsubmit="handleChatQuery(event)">
-      <input type="text" id="chatInput" class="quick-input" placeholder="اكتب رسالتك هنا…" required />
-      <button type="submit" class="btn-send">إرسال</button>
-    </form>
-  </div>
-
-  <!-- ================= 1. نافذة لوحة التحكم الشخصية ================= -->
-  <div class="modal-overlay" id="dashboardModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3>📌 لوحة التحكم الشخصية (ترتيب وتثبيت الخدمات)</h3>
-        <button class="close-btn" onclick="closeModal('dashboardModal')">إغلاق</button>
-      </div>
-      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
-        قم بتقديم الخدمات وتأخيرها أو تثبيت الخدمات الأكثر استخداماً لتتصدر الواجهة:
-      </p>
-
-      <div id="dashboardCardsList"></div>
-
-      <button class="btn-send" style="width: 100%; margin-top: 14px; justify-content: center;" onclick="resetCardsDefault()">
-        استعادة الترتيب الافتراضي
-      </button>
-    </div>
-  </div>
-
-  <!-- ================= 2. نافذة تسجيل الدخول بخيارات متعددة ================= -->
-  <div class="modal-overlay" id="authModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="authTitle">تسجيل الدخول لمنصة البيان</h3>
-        <button class="close-btn" onclick="closeModal('authModal')">إغلاق</button>
-      </div>
-
-      <div id="authContent" style="display: flex; flex-direction: column; gap: 10px;">
-        <!-- الدخول كضيف -->
-        <button class="btn-icon" style="justify-content: center; padding: 12px;" onclick="loginAs('ضيف المنصة')">
-          ⚡ الدخول المباشر كزائر / ضيف (Guest)
-        </button>
-
-        <div style="text-align: center; font-size: 11px; color: var(--text-muted);">أو تسجيل الدخول السريع:</div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button class="btn-icon" style="justify-content: center;" onclick="loginAs('مستخدم Google')">
-            <span style="color: #ef4444;">G</span> حساب Google
-          </button>
-          <button class="btn-icon" style="justify-content: center;" onclick="loginAs('مطور GitHub')">
-            <span style="color: #8b5cf6;">Git</span> حساب GitHub
-          </button>
+    <!-- Hero Content -->
+    <section class="hero-section">
+      <div class="wave-badge-container">
+        <div class="wave-glow"></div>
+        <div class="wave-badge">
+          <svg viewBox="0 0 100 100" fill="none" style="width: 100%; height: 100%;">
+            <path d="M10 80C30 76 45 70 60 72C78 74 90 82 100 80V95H10V80Z" fill="#1e3a8a" opacity="0.8"/>
+            <path d="M12 85C28 83 48 78 64 80C82 82 92 88 100 86V95H12V85Z" fill="#2563eb"/>
+            <path d="M15 90C15 90 22 75 32 62C40 50 48 40 58 34C68 28 78 30 82 38C85 43 80 50 72 52C64 54 56 49 52 42" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M10 92C16 80 26 64 38 50C50 36 64 30 76 34C82 36 82 42 74 46C62 50 50 60 44 70C38 80 34 90 30 95H10Z" fill="#1d4ed8"/>
+            <circle cx="68" cy="34" r="2.5" fill="#ffffff"/>
+            <circle cx="58" cy="40" r="2" fill="#ffffff"/>
+            <circle cx="48" cy="48" r="2" fill="#ffffff"/>
+          </svg>
         </div>
-
-        <div style="text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 6px;">أو بالبريد الإلكتروني:</div>
-        <input type="email" id="emailInput" class="quick-input" placeholder="name@example.com" style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--bg-input);" />
-        <button class="btn-send" style="justify-content: center;" onclick="loginWithEmail()">
-          دخول الحساب
-        </button>
       </div>
-    </div>
-  </div>
 
-  <!-- ================= 3. نافذة تفاصيل البطاقات الأربع ================= -->
-  <div class="modal-overlay" id="infoModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="infoModalTitle">تفاصيل الخدمة</h3>
-        <button class="close-btn" onclick="closeModal('infoModal')">إغلاق</button>
-      </div>
-      <div id="infoModalBody"></div>
-    </div>
-  </div>
-
-  <!-- ================= 4. نافذة كود FastAPI وقاعدة البيانات ================= -->
-  <div class="modal-overlay" id="fastapiModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3>🗄️ خادم FastAPI وقاعدة بيانات SQLite</h3>
-        <button class="close-btn" onclick="closeModal('fastapiModal')">إغلاق</button>
-      </div>
-      <p style="font-size: 12px; color: var(--text-muted);">
-        هذا الكود متوافق مع مستودع <code>Suggested-Workflows</code> ويحتوي على مسارات المحادثة وقاعدة البيانات:
+      <h1 class="app-title">منصة موجة البيان</h1>
+      <p class="app-description">
+        منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek. اختر سؤالاً مقترحاً أو ابدأ محادثتك مباشرة.
       </p>
-      <pre class="code-box">from fastapi import FastAPI, Depends
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import declarative_base, sessionmaker
+    </section>
 
-app = FastAPI(title="موجة البيان API")
-Base = declarative_base()
+    <!-- 4 Cards Grid -->
+    <div class="cards-grid">
+      <!-- Card 1: النماذج المتوفرة -->
+      <div class="action-card" onclick="openModal('models')">
+        <div class="card-icon">✨</div>
+        <div>
+          <div class="card-title">النماذج المتوفرة</div>
+          <div class="card-subtitle">تعرف على أحدث إصدارات Gemini ومقارنتها</div>
+        </div>
+      </div>
 
-class ChatLog(Base):
-    __tablename__ = "chats"
-    id = Column(Integer, primary_key=True)
-    query = Column(String)
-    response = Column(String)
+      <!-- Card 2: البدء مع Python -->
+      <div class="action-card" onclick="openModal('python')">
+        <div class="card-icon">🐍</div>
+        <div>
+          <div class="card-title">البدء مع Python</div>
+          <div class="card-subtitle">مثال عملي لربط Gemini بـ Python</div>
+        </div>
+      </div>
 
-@app.post("/api/chat")
-async def chat(query: str):
-    return {"reply": "تم استلام السؤال ومعالجته بنجاح"}</pre>
-      <button class="btn-send" style="width: 100%; justify-content: center;" onclick="alert('تم نسخ الكود!');">نسخ كود بايثون</button>
+      <!-- Card 3: الحدود والأسعار -->
+      <div class="action-card" onclick="openModal('pricing')">
+        <div class="card-icon">📊</div>
+        <div>
+          <div class="card-title">الحدود والأسعار</div>
+          <div class="card-subtitle">تفاصيل الأسعار والقيود لكل نموذج</div>
+        </div>
+      </div>
+
+      <!-- Card 4: Flash vs Pro -->
+      <div class="action-card" onclick="openModal('compare')">
+        <div class="card-icon">⚡</div>
+        <div>
+          <div class="card-title">Flash vs Pro</div>
+          <div class="card-subtitle">مقارنة شاملة بين النماذج</div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- ================= البرمجة التفاعلية بالكامل (JavaScript) ================= -->
+    <!-- Live prompt bar -->
+    <div class="prompt-bar-wrap">
+      <div class="prompt-bar">
+        <input type="text" id="user-input" class="prompt-input" placeholder="اكتب سؤالك التقني هنا..." onkeydown="if(event.key==='Enter') sendChat();" />
+        <button class="prompt-btn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      2026 © موجة البيان • Powered by Gemini 3.8 Flash
+    </footer>
+
+    <!-- Interactive Modal -->
+    <div class="modal-backdrop" id="modal-backdrop">
+      <div class="modal-content" id="modal-body">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+
+  </main>
+
   <script>
-    const $ = id => document.getElementById(id);
+    const modalContents = {
+      models: `
+        <div class="modal-header">
+          <h3>✨ النماذج المتوفرة وأحدث الإصدارات</h3>
+          <button class="close-btn" onclick="closeModal()">إغلاق</button>
+        </div>
+        <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 10px;">
+          • <strong>Gemini 3.8 Flash:</strong> فائق السرعة والاقتصاد، مثالي للشات والتطبيقات الفورية بسياق 1M رمز.<br>
+          • <strong>Gemini 3.1 Pro:</strong> الأقوى في التفكير المنطقي والبرمجة الصعبة بسياق 2M رمز.<br>
+          • <strong>DeepSeek V3:</strong> معمارية خليط الخبراء (MoE) مفتوحة الأوزان عالية الكفاءة.
+        </p>
+      `,
+      python: `
+        <div class="modal-header">
+          <h3>🐍 البدء مع Python و SDK الرسمي</h3>
+          <button class="close-btn" onclick="closeModal()">إغلاق</button>
+        </div>
+        <p style="font-size: 12px; color: #94a3b8;">تثبيت الحزمة الرسمية وكود الاستدعاء:</p>
+        <pre><code># pip install google-genai
+from google import genai
+import os
 
-    /* 1. بيانات البطاقات الأربع */
-    const SERVICES = {
-      models: {
-        id: 'models',
-        title: 'النماذج المتوفرة',
-        desc: 'تعرف على أحدث إصدارات Gemini و DeepSeek ومقارنتها',
-        icon: '✨',
-        details: `
-          <p style="font-size: 13px; line-height: 1.8;">
-            • <strong>Gemini 3.8 Flash:</strong> فائق السرعة والاقتصاد ومثالي للدردشة التفاعلية.<br>
-            • <strong>Gemini 3.1 Pro:</strong> الأقوى بالاستدلال البرمجي والمهام المعقدة.<br>
-            • <strong>DeepSeek V3 / R1:</strong> نماذج مفتوحة المصدر عالية الكفاءة.
-          </p>
-        `
-      },
-      python: {
-        id: 'python',
-        title: 'البدء مع Python',
-        desc: 'مثال عملي لاستدعاء Gemini عبر مكتبة google-genai',
-        icon: '🐍',
-        details: `
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">كود الاستدعاء الرسمي:</p>
-          <pre class="code-box">from google import genai
 client = genai.Client()
-res = client.models.generate_content(
+response = client.models.generate_content(
     model="gemini-3.8-flash",
-    contents="مرحبا"
+    contents="اكتب دالة بايثون سريعة لحساب الفائدة",
 )
-print(res.text)</pre>
-        `
-      },
-      comparison: {
-        id: 'comparison',
-        title: 'Flash vs Pro',
-        desc: 'مقارنة شاملة بين السرعة والتكلفة ودقة الاستدلال',
-        icon: '⚡',
-        details: `
-          <p style="font-size: 13px; line-height: 1.8;">
-            • <strong>Flash:</strong> زمن استجابة 0.4 ثانية، تكلفة أقل بـ 90%، رائع لخدمة العملاء.<br>
-            • <strong>Pro:</strong> استدلال عميق، كتابة كود تفصيلي، سياق يصل لـ 2M رمز.
-          </p>
-        `
-      },
-      pricing: {
-        id: 'pricing',
-        title: 'الحدود والأسعار',
-        desc: 'تفاصيل الحصص المجانية والاشتراكات للرموز (Tokens)',
-        icon: '📊',
-        details: `
-          <p style="font-size: 13px; line-height: 1.8;">
-            • <strong>الخطة المجانية:</strong> 15 طلب في الدقيقة و 1,500 طلب يومياً مجاناً.<br>
-            • <strong>Gemini 3.8 Flash:</strong> $0.10 لكل مليون رمز إدخال.<br>
-            • <strong>Context Caching:</strong> خصم 75% من تكلفة السياق المكرر.
-          </p>
-        `
-      }
+print(response.text)</code></pre>
+      `,
+      pricing: `
+        <div class="modal-header">
+          <h3>📊 الحدود والأسعار</h3>
+          <button class="close-btn" onclick="closeModal()">إغلاق</button>
+        </div>
+        <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+          • <strong>الخطة المجانية (AI Studio):</strong> حتى 15 طلب/دقيقة مجاناً تماماً للتطوير.<br>
+          • <strong>Gemini 3.8 Flash:</strong> $0.10 لكل 1M رمز إدخال و $0.40 لكل 1M رمز إخراج.<br>
+          • <strong>Gemini 3.1 Pro:</strong> $1.25 لكل 1M رمز إدخال.<br>
+          • <strong>ميزة Context Caching:</strong> خصم حتى 75% للسياقات الطويلة.
+        </p>
+      `,
+      compare: `
+        <div class="modal-header">
+          <h3>⚡ مقارنة Flash مقابل Pro</h3>
+          <button class="close-btn" onclick="closeModal()">إغلاق</button>
+        </div>
+        <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+          • <strong>السرعة:</strong> Flash يستجيب في أقل من نصف ثانية مقابل 1.5 - 3 ثوانٍ لـ Pro.<br>
+          • <strong>التكلفة:</strong> Flash أوفر بأكثر من 90% ومثالي لـ 85% من المشاريع.<br>
+          • <strong>الاستدلال المعقد:</strong> يتفوق Pro في الرياضيات المعقدة وهندسة النظم.
+        </p>
+      `
     };
 
-    /* حالة الترتيب والتثبيت في لوحة التحكم الشخصية */
-    let cardOrder = JSON.parse(localStorage.getItem('bayan_order')) || ['models', 'python', 'comparison', 'pricing'];
-    let pinnedCards = JSON.parse(localStorage.getItem('bayan_pinned')) || ['models'];
-
-    /* 2. رندرة البطاقات في الواجهة الرئيسية */
-    function renderCards() {
-      const container = $('cardsContainer');
-      container.innerHTML = '';
-
-      // فرز: المثبت أولاً، ثم حسب ترتيب المستخدم
-      const sorted = [...cardOrder].sort((a, b) => {
-        const aPin = pinnedCards.includes(a);
-        const bPin = pinnedCards.includes(b);
-        if (aPin && !bPin) return -1;
-        if (!aPin && bPin) return 1;
-        return 0;
-      });
-
-      sorted.forEach(id => {
-        const item = SERVICES[id];
-        if (!item) return;
-        const isPinned = pinnedCards.includes(id);
-
-        const card = document.createElement('div');
-        card.className = 'service-card ' + (isPinned ? 'is-pinned' : '');
-        card.onclick = () => showServiceDetails(id);
-        card.innerHTML = `
-          <div class="card-top">
-            <span class="card-ic">${item.icon}</span>
-            ${isPinned ? '<span class="pin-badge">📌 مثبتة</span>' : ''}
-          </div>
-          <div>
-            <span class="card-title">${item.title}</span>
-            <span class="card-desc">${item.desc}</span>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-
-      renderDashboardList();
+    function openModal(type) {
+      document.getElementById('modal-body').innerHTML = modalContents[type] || '';
+      document.getElementById('modal-backdrop').classList.add('active');
     }
 
-    /* 3. رندرة قائمة لوحة التحكم الشخصية */
-    function renderDashboardList() {
-      const list = $('dashboardCardsList');
-      list.innerHTML = '';
-
-      cardOrder.forEach((id, index) => {
-        const item = SERVICES[id];
-        const isPinned = pinnedCards.includes(id);
-
-        const row = document.createElement('div');
-        row.className = 'dash-row';
-        row.innerHTML = `
-          <div style="font-weight: 700; font-size: 13px;">
-            ${item.icon} ${item.title}
-          </div>
-          <div class="dash-actions">
-            <button class="dash-btn ${isPinned ? 'active' : ''}" onclick="togglePinCard('${id}')">
-              ${isPinned ? '📌 مثبتة' : 'تثبيت'}
-            </button>
-            <button class="dash-btn" ${index === 0 ? 'disabled' : ''} onclick="moveCard(${index}, -1)">⬆</button>
-            <button class="dash-btn" ${index === cardOrder.length - 1 ? 'disabled' : ''} onclick="moveCard(${index}, 1)">⬇</button>
-          </div>
-        `;
-        list.appendChild(row);
-      });
+    function closeModal() {
+      document.getElementById('modal-backdrop').classList.remove('active');
     }
 
-    function togglePinCard(id) {
-      if (pinnedCards.includes(id)) {
-        pinnedCards = pinnedCards.filter(p => p !== id);
-      } else {
-        pinnedCards.push(id);
-      }
-      localStorage.setItem('bayan_pinned', JSON.stringify(pinnedCards));
-      renderCards();
-    }
-
-    function moveCard(index, dir) {
-      const target = index + dir;
-      if (target < 0 || target >= cardOrder.length) return;
-      const temp = cardOrder[index];
-      cardOrder[index] = cardOrder[target];
-      cardOrder[target] = temp;
-      localStorage.setItem('bayan_order', JSON.stringify(cardOrder));
-      renderCards();
-    }
-
-    function resetCardsDefault() {
-      cardOrder = ['models', 'python', 'comparison', 'pricing'];
-      pinnedCards = ['models'];
-      localStorage.removeItem('bayan_order');
-      localStorage.removeItem('bayan_pinned');
-      renderCards();
-    }
-
-    /* 4. محاكاة زر الإرسال والتحميل لمدة 3 ثوانٍ */
-    function handleSimulatedSubmit(e) {
-      e.preventDefault();
-      const val = $('promptInput').value.trim();
-      if (!val) return;
-
-      const btn = $('submitBtn');
-      const btnText = $('submitBtnText');
-      const spinner = $('submitSpinner');
-      const notice = $('successNotice');
-
-      btn.disabled = true;
-      btnText.textContent = 'جاري التحميل...';
-      spinner.style.display = 'block';
-      notice.classList.remove('show');
-
-      // محاكاة 3 ثوانٍ بالتمام (3000ms)
-      setTimeout(() => {
-        spinner.style.display = 'none';
-        btnText.textContent = 'تم الإرسال';
-        btn.disabled = false;
-        notice.classList.add('show');
-
-        // فتح الشات بعد اكتمال التحميل
-        setTimeout(() => {
-          openChatView();
-          addChatMsg(val, 'me');
-          sendToFastApi(val);
-          $('promptInput').value = '';
-          btnText.textContent = 'إرسال';
-        }, 1200);
-      }, 3000);
-    }
-
-    /* 5. الاتصال بـ FastAPI /api/chat مع رد احتياطي */
-    async function sendToFastApi(q) {
-      const botWaiting = addChatMsg('جاري استخراج الرد من نماذج الذكاء الاصطناعي...', 'bot');
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          botWaiting.textContent = data.answer || data.reply || JSON.stringify(data);
-        } else {
-          botWaiting.textContent = getOfflineReply(q);
-        }
-      } catch (err) {
-        botWaiting.textContent = getOfflineReply(q);
-      }
-    }
-
-    function getOfflineReply(q) {
-      q = q.toLowerCase();
-      if (q.includes('بايثون') || q.includes('python')) {
-        return "للربط مع بايثون:\n1. pip install google-genai\n2. استخدم نموذج gemini-3.8-flash لتوليد أسرع ردود.";
-      }
-      if (q.includes('سعر') || q.includes('أسعار') || q.includes('حدود')) {
-        return "الخطة المجانية في AI Studio توفر 15 طلب بالدقيقة مجاناً. سعر Flash التجاري $0.10 لكل 1M رمز إدخال.";
-      }
-      return "تم استلام سؤالك في منصة موجة البيان. يمكنك تشغيل خادم FastAPI عبر uvicorn للربط الحي.";
-    }
-
-    function addChatMsg(text, type) {
-      const d = document.createElement('div');
-      d.className = 'msg ' + type;
-      d.textContent = text;
-      $('chatMsgs').appendChild(d);
-      $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
-      return d;
-    }
-
-    function handleChatQuery(e) {
-      e.preventDefault();
-      const input = $('chatInput');
+    function sendChat() {
+      const input = document.getElementById('user-input');
       const val = input.value.trim();
       if (!val) return;
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-header">
+          <h3>رد مستشار موجة البيان التقني</h3>
+          <button class="close-btn" onclick="closeModal()">إغلاق</button>
+        </div>
+        <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+          <p style="color: #818cf8; margin-bottom: 8px;">سؤالك: ${val}</p>
+          <p>أهلاً بك! في منصة <strong>موجة البيان</strong>، يُنصح دائماً بالاعتماد على <strong>Gemini 3.8 Flash</strong> كخيار افتراضي سريع واقتصادي، وربطه بمكتبة <code>google-genai</code> الحديثة. لأي استفسار برمجي محدد نحن في خدمتك دائماً.</p>
+        </div>
+      `;
+      document.getElementById('modal-backdrop').classList.add('active');
       input.value = '';
-      addChatMsg(val, 'me');
-      sendToFastApi(val);
     }
-
-    /* 6. تبديل الوضع الليلي والنهاري */
-    function toggleTheme() {
-      const current = document.documentElement.getAttribute('data-theme');
-      const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      $('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
-      localStorage.setItem('bayan_theme', next);
-    }
-
-    // استعادة السمة المحفوظة
-    const savedTheme = localStorage.getItem('bayan_theme');
-    if (savedTheme) {
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      $('themeBtn').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
-    }
-
-    /* 7. القوائم والنوافذ المنبثقة */
-    function toggleDropdown() {
-      $('dropdownMenu').classList.toggle('show');
-    }
-
-    function openModal(id) {
-      $(id).classList.add('active');
-    }
-
-    function closeModal(id) {
-      $(id).classList.remove('active');
-    }
-
-    function showServiceDetails(id) {
-      const item = SERVICES[id];
-      $('infoModalTitle').textContent = item.icon + ' ' + item.title;
-      $('infoModalBody').innerHTML = item.details;
-      openModal('infoModal');
-    }
-
-    function loginAs(role) {
-      $('userNameLabel').textContent = role;
-      closeModal('authModal');
-      alert('مرحباً بك! تم تسجيل الدخول كـ ' + role);
-    }
-
-    function loginWithEmail() {
-      const email = $('emailInput').value.trim();
-      if (!email) return;
-      loginAs(email.split('@')[0]);
-    }
-
-    function openChatView() {
-      $('homeView').classList.add('hidden');
-      $('chatView').classList.remove('hidden');
-      if ($('chatMsgs').children.length === 0) {
-        addChatMsg('مرحباً بك في منصة موجة البيان! كيف أساعدك اليوم في نماذج Gemini و DeepSeek؟', 'bot');
-      }
-    }
-
-    function closeChatView() {
-      $('chatView').classList.add('hidden');
-      $('homeView').classList.remove('hidden');
-    }
-
-    // التشغيل المبدئي
-    renderCards();
   </script>
 </body>
 </html>
