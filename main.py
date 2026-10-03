@@ -47,20 +47,21 @@ def ask_question(request: QueryRequest):
         raise HTTPException(status_code=400, detail="السؤال لا يمكن أن يكون فارغاً.")
 
     try:
-        # 1. تحويل سؤال المستخدم إلى متجه رقمي
+        # استخدام نموذج gemini-embedding-001 وتمرير السؤال كنص مباشر
         embed_response = genai_client.models.embed_content(
-            model="text-embedding-004",
+            model="gemini-embedding-001",
             contents=request.question,
             config=types.EmbedContentConfig(
                 task_type="RETRIEVAL_QUERY"
             )
         )
         
-        # استخراج المتجه (حسب إصدار مكتبة genai الجديد)
+        # استخراج المتجه
         if hasattr(embed_response, 'embeddings') and embed_response.embeddings:
             query_vector = embed_response.embeddings[0].values
         else:
-            query_vector = embed_response.embedding.values
+             query_vector = embed_response.embedding.values
+
 
     except Exception as e:
         print(f"Embedding Error: {e}")
