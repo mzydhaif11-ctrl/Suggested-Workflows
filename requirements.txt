@@ -1,5 +1,4 @@
 fastapi
 uvicorn
-chromadb
 openai>=1.0.0
-qdrant-client>=1.9.0
+qdrant-client[fastembed]>=1.9.0
