@@ -13,7 +13,7 @@ QDRANT_URL = os.environ.get("QDRANT_URL")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 COLLECTION_NAME = "gemini_docs"
 
-# تشغيل العملاء
+# تشغيل عملاء الاتصال
 genai_client = genai.Client(api_key=GEMINI_API_KEY)
 qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
@@ -33,7 +33,7 @@ def ask_question(request: QueryRequest):
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="السؤال لا يمكن أن يكون فارغاً.")
 
-    # 1. تحويل سؤال المستخدم إلى تضمين متجهي
+    # 1. تحويل سؤال المستخدم إلى متجه رقمي
     embed_response = genai_client.models.embed_content(
         model="text-embedding-004",
         contents=request.question,
@@ -43,7 +43,7 @@ def ask_question(request: QueryRequest):
     )
     query_vector = embed_response.embedding.values
 
-    # 2. البحث الدلالي في Qdrant
+    # 2. البحث الدلالي في قاعدة بيانات Qdrant
     search_results = qdrant_client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vector,
@@ -56,13 +56,13 @@ def ask_question(request: QueryRequest):
             sources=[]
         )
 
-    # جمع السياق والمصادر
+    # استخراج النصوص المسترجعة والمصادر
     context_chunks = [hit.payload.get("text", "") for hit in search_results]
     sources = list({hit.payload.get("source", "") for hit in search_results})
     full_context = "\n---\n".join(context_chunks)
 
-    # 3. صياغة الإجابة باستخدام Gemini 2.5 Flash
-    prompt = f"""أنت المساعد التقني الذكي لمنصة موج البيان. أجب عن سؤال المستخدم بدقة استناداً إلى السياق المرفق فقط.
+    # 3. صياغة الرد الذكي باستخدام Gemini 2.5 Flash
+    prompt = f"""أنت المساعد التقني الذكي لمنصة Mowjh Al-Bayan. أجب عن سؤال المستخدم بدقة استناداً إلى السياق المرفق فقط.
 
 السياق المسترجع من الوثائق:
 {full_context}
