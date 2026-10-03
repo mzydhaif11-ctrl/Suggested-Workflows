@@ -1,11 +1,10 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
 from qdrant_client import QdrantClient
-
-app = FastAPI(title="Mowjh Al-Bayan Support API")
 
 # قراءة المتغيرات البيئية
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -16,6 +15,20 @@ COLLECTION_NAME = "gemini_docs"
 # تشغيل عملاء الاتصال
 genai_client = genai.Client(api_key=GEMINI_API_KEY)
 qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # تشغيل تهيئة البيانات تلقائياً عند بدء التشغيل
+    try:
+        import ingest
+        print("بدء تهيئة وفهرسة البيانات...")
+        ingest.main()
+        print("اكتملت التهيئة بنجاح.")
+    except Exception as e:
+        print(f"تنبيه التهيئة: {e}")
+    yield
+
+app = FastAPI(title="Mowjh Al-Bayan Support API", lifespan=lifespan)
 
 class QueryRequest(BaseModel):
     question: str
@@ -61,7 +74,7 @@ def ask_question(request: QueryRequest):
     sources = list({hit.payload.get("source", "") for hit in search_results})
     full_context = "\n---\n".join(context_chunks)
 
-    # 3. صياغة الرد الذكي باستخدام Gemini 2.5 Flash
+    # 3. صياغة الرد الذكي باستخدام Gemini
     prompt = f"""أنت المساعد التقني الذكي لمنصة Mowjh Al-Bayan. أجب عن سؤال المستخدم بدقة استناداً إلى السياق المرفق فقط.
 
 السياق المسترجع من الوثائق:
