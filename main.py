@@ -1,24 +1,25 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from google import genai
-from google.genai import types
 from qdrant_client import QdrantClient
 
-# قراءة المتغيرات البيئية
+# 1. قراءة المتغيرات البيئية
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 QDRANT_URL = os.environ.get("QDRANT_URL")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 COLLECTION_NAME = "gemini_docs"
 
-# تشغيل عملاء الاتصال
+# 2. تشغيل عملاء الاتصال (Gemini & Qdrant)
 genai_client = genai.Client(api_key=GEMINI_API_KEY)
 qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
+# 3. إعداد دورة حياة التطبيق (لتشغيل قاعدة البيانات تلقائياً)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # تشغيل تهيئة البيانات تلقائياً عند بدء التشغيل
     try:
         import ingest
         print("بدء تهيئة وفهرسة البيانات...")
@@ -28,8 +29,13 @@ async def lifespan(app: FastAPI):
         print(f"تنبيه التهيئة: {e}")
     yield
 
-app = FastAPI(title="Mowjh Al-Bayan Support API", lifespan=lifespan)
+# 4. تهيئة تطبيق FastAPI
+app = FastAPI(title="Mowjh Al-Bayan API", lifespan=lifespan)
 
+# 5. إعداد مجلد القوالب (لعرض واجهات HTML)
+templates = Jinja2Templates(directory="templates")
+
+# 6. نماذج البيانات (Pydantic Models)
 class QueryRequest(BaseModel):
     question: str
 
@@ -37,37 +43,41 @@ class QueryResponse(BaseModel):
     answer: str
     sources: list[str]
 
+# 7. المسارات (Routes)
 @app.get("/")
 def health_check():
+    """مسار فحص حالة السيرفر"""
     return {"status": "ok", "service": "Mowjh Al-Bayan API"}
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """مسار عرض واجهة تسجيل الدخول"""
+    return templates.TemplateResponse("login.html", {"request": request})
 
 @app.post("/ask", response_model=QueryResponse)
 def ask_question(request: QueryRequest):
+    """مسار استقبال الأسئلة والرد عليها بالذكاء الاصطناعي"""
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="السؤال لا يمكن أن يكون فارغاً.")
 
+    # الخطوة أ: تحويل سؤال المستخدم إلى متجه رقمي
     try:
-        # استخدام نموذج gemini-embedding-001 وتمرير السؤال كنص مباشر
         embed_response = genai_client.models.embed_content(
             model="gemini-embedding-001",
-            contents=request.question,
-            config=types.EmbedContentConfig(
-                task_type="RETRIEVAL_QUERY"
-            )
+            contents=request.question
         )
         
-        # استخراج المتجه
+        # استخراج المتجه بشكل آمن
         if hasattr(embed_response, 'embeddings') and embed_response.embeddings:
             query_vector = embed_response.embeddings[0].values
         else:
-             query_vector = embed_response.embedding.values
-
-
+            query_vector = embed_response.embedding.values
+            
     except Exception as e:
         print(f"Embedding Error: {e}")
         raise HTTPException(status_code=500, detail="حدث خطأ أثناء تحويل السؤال في نماذج Gemini.")
 
-    # 2. البحث الدلالي في قاعدة بيانات Qdrant
+    # الخطوة ب: البحث الدلالي في قاعدة بيانات Qdrant
     try:
         search_results = qdrant_client.search(
             collection_name=COLLECTION_NAME,
@@ -89,7 +99,7 @@ def ask_question(request: QueryRequest):
     sources = list({hit.payload.get("source", "") for hit in search_results})
     full_context = "\n---\n".join(context_chunks)
 
-    # 3. صياغة الرد الذكي باستخدام Gemini
+    # الخطوة ج: صياغة الرد الذكي باستخدام Gemini 2.5 Flash
     prompt = f"""أنت المساعد التقني الذكي لمنصة Mowjh Al-Bayan. أجب عن سؤال المستخدم بدقة استناداً إلى السياق المرفق فقط.
 
 السياق المسترجع من الوثائق:
