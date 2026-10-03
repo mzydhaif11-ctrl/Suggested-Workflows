@@ -1,8 +1,20 @@
-fastapi==0.115.*
-uvicorn[standard]==0.34.*
-qdrant-client==1.12.*
-chromadb==0.5.*
-google-generativeai==0.8.*
-openai==1.57.*
-python-dotenv==1.0.*
-httpx==0.28.*
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.3
+httpx==0.28.1
+
+# Google Gemini
+google-generativeai==0.8.3
+
+# DeepSeek (يستخدم مكتبة OpenAI)
+openai==1.57.4
+
+# Qdrant Vector DB
+qdrant-client==1.12.1
+
+# ChromaDB Vector DB
+chromadb==0.5.23
+
+# أدوات مساعدة
+python-dotenv==1.0.1
+tiktoken==0.8.0
