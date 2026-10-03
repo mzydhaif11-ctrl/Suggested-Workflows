@@ -1,5 +1,5 @@
 import os
-from google import genai
+import google.generativeai as genai
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
 
@@ -9,11 +9,12 @@ QDRANT_URL = os.environ.get("QDRANT_URL")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 COLLECTION_NAME = "gemini_docs"
 
-# تشغيل عملاء الاتصال
-genai_client = genai.Client(api_key=GEMINI_API_KEY)
+# إعداد Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+
+# إعداد Qdrant
 qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
-# يمكنك وضع النصوص الخاصة بك هنا أو برمجتها لتقرأ من ملف خارجي (مثل PDF أو TXT)
 DOCUMENTS = [
     {
         "id": 1,
@@ -33,36 +34,30 @@ DOCUMENTS = [
 ]
 
 def create_collection():
-    """التحقق من وجود المجموعة وإنشاؤها إذا لم تكن موجودة"""
     try:
         collections = qdrant_client.get_collections().collections
         exists = any(col.name == COLLECTION_NAME for col in collections)
         
         if not exists:
             print(f"إنشاء مجموعة جديدة باسم: {COLLECTION_NAME}...")
-            # الحجم 768 هو المناسب لنموذج gemini-embedding-001
             qdrant_client.create_collection(
                 collection_name=COLLECTION_NAME,
                 vectors_config=VectorParams(size=768, distance=Distance.COSINE),
             )
             print("تم إنشاء المجموعة بنجاح.")
         else:
-            print(f"المجموعة '{COLLECTION_NAME}' موجودة مسبقاً وتعمل بشكل طبيعي.")
+            print(f"المجموعة '{COLLECTION_NAME}' موجودة مسبقاً.")
     except Exception as e:
         print(f"خطأ أثناء التحقق/إنشاء المجموعة: {e}")
         raise e
 
 def generate_embedding(text: str):
-    """تحويل النص إلى متجه رقمي باستخدام النموذج الجديد"""
-    response = genai_client.models.embed_content(
-        model="gemini-embedding-001",
-        contents=text, # تمرير النص كـ String وليس List
+    response = genai.embed_content(
+        model="models/text-embedding-004",
+        content=text,
+        task_type="retrieval_document"
     )
-    
-    # التوافق مع هيكل الاستجابة الجديد
-    if hasattr(response, 'embeddings') and response.embeddings:
-        return response.embeddings[0].values
-    return response.embedding.values
+    return response['embedding']
 
 def main():
     print("بدء عملية تهيئة وفهرسة البيانات...")
@@ -70,7 +65,7 @@ def main():
     
     points = []
     for doc in DOCUMENTS:
-        print(f"جاري تحويل المستند {doc['id']} إلى متجهات...")
+        print(f"جاري تحويل المستند {doc['id']}...")
         try:
             vector = generate_embedding(doc["text"])
             point = PointStruct(
@@ -83,17 +78,15 @@ def main():
             )
             points.append(point)
         except Exception as e:
-            print(f"خطأ أثناء معالجة المستند {doc['id']}: {e}")
+            print(f"خطأ في المستند {doc['id']}: {e}")
     
     if points:
-        print("رفع المتجهات إلى قاعدة بيانات Qdrant...")
+        print("رفع المتجهات...")
         qdrant_client.upsert(
             collection_name=COLLECTION_NAME,
             points=points
         )
-        print("✅ تمت الفهرسة وتجهيز قاعدة البيانات بنجاح!")
-    else:
-        print("⚠️ لم يتم العثور على بيانات صالحة لرفعها.")
+        print("✅ تمت الفهرسة بنجاح!")
 
 if __name__ == "__main__":
     main()
