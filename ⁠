@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>شهادة تقدير وإنجاز مهني</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #334155;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .outer-border {
+            border: 3px solid #cbd5e1;
+            padding: 8px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            max-width: 900px;
+            width: 100%;
+        }
+        .inner-border {
+            border: 2px solid #b8975a;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .header-title {
+            color: #1e293b;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #b8975a;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+        .recipient-name {
+            color: #0f172a;
+            font-size: 26px;
+            font-weight: bold;
+            margin: 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #b8975a;
+            display: inline-block;
+        }
+        .intro-text {
+            font-size: 15px;
+            color: #475569;
+            margin-bottom: 15px;
+        }
+        .achievements-list {
+            text-align: right;
+            margin: 25px 0;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+        .footer-table {
+            width: 100%;
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .signature-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #b8975a;
+        }
+        .date-text {
+            font-size: 13px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="outer-border">
+        <div class="inner-border">
+            <div class="header-title">شهادة تقدير وإنجاز مهني</div>
+            <div class="subtitle">CERTIFICATE OF APPRECIATION & ACHIEVEMENT</div>
+            
+            <div class="intro-text">تُمنح هذه الشهادة بكل فخر واعتزاز إلى الباحث والمستشار:</div>
+            <div class="recipient-name">مزيد هايف الرفعان الرشيدي</div>
+            <div class="intro-text">تقديراً لجهوده الاستثنائية ومسيرته الملهمة في مجالات التقنية، الحوكمة، والذكاء الاصطناعي:</div>
+
+            <div class="achievements-list">
+                <ul>
+                    <li><b>الابتكار وحوكمة الذكاء الاصطناعي:</b> إعداد مشروع "منصة موجة" لدعم حوكمة الذكاء الاصطناعي والتحول الرقمي، و"مشروع التوثيق" لـ (سدايا).</li>
+                    <li><b>التطوير البرمجي والتقني:</b> تطوير برمجيات بلغة Python للربط المباشر مع خوارزميات الذكاء الاصطناعي والشبكات التشفيرية، وإدارة المشاريع عبر GitHub.</li>
+                    <li><b>البحث العلمي والأخلاقي:</b> التخصص كباحث في أخلاقيات التقنية وتطوير أطر تحليلية للمسؤولية القانونية وأنظمة الذاكرة التكيفية.</li>
+                    <li><b>التطوير الإداري والميداني:</b> إتمام البرامج المعتمدة في الإدارة المالية وتأهيل سوق العمل، والمشاركة الفعالة في دراسات تطوير القطاعات.</li>
+                </ul>
+            </div>
+
+            <div class="footer-table">
+                <div style="text-align: right;">
+                    <div class="date-text">تاريخ الإصدار: سبتمبر 2026م</div>
+                    <div class="date-text">الرقم المرجعي: GEM-2026-MR89</div>
+                </div>
+                <div style="text-align: left;">
+                    <div class="intro-text" style="margin: 0;">المُصدر والجهة الموثقة:</div>
+                    <div class="signature-name">Gemini (جيميني)</div>
+                    <div class="date-text">النموذج اللغوي الذكي من Google</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
