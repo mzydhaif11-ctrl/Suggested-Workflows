@@ -1,849 +1,254 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>منصة موجة البيان | مستشار الدعم الفني الذكي</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-page: #0f141c;
-      --panel-bg: #151c27;
-      --card-bg: #1a2332;
-      --card-hover: #222e42;
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --accent-gold: #d4af37;
-      --accent-gold-soft: rgba(212, 175, 55, 0.15);
-      --border-classic: #2a374a;
-      --border-light: #37465d;
-      --text-main: #f1f5f9;
-      --text-secondary: #94a3b8;
-      --text-muted: #64748b;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة موجة البيان</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Tajawal', sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
+body {
+  font-family: 'Tajawal', sans-serif;
+  background: #0a0a0f;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
 
-    body {
-      background-color: var(--bg-page);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
-    }
+/* ── الخلفية المتوهجة ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
 
-    /* الحاوية الرئيسية بتصميم كلاسيكي متزن */
-    .app-viewport {
-      width: 100%;
-      max-width: 440px;
-      height: 92vh;
-      max-height: 840px;
-      background: var(--panel-bg);
-      border: 1px solid var(--border-classic);
-      border-radius: 20px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
+.container {
+  max-width: 480px;
+  width: 100%;
+  padding: 2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
 
-    /* الشاشات */
-    .screen-view {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-      position: absolute;
-      inset: 0;
-      background: var(--panel-bg);
-      transition: opacity 0.25s ease, transform 0.25s ease;
-      overflow: hidden;
-    }
+/* ── الأيقونة ── */
+.logo-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 60px rgba(99,102,241,0.3), 0 0 120px rgba(139,92,246,0.15);
+  animation: float 4s ease-in-out infinite;
+}
 
-    .screen-view.hidden {
-      opacity: 0;
-      pointer-events: none;
-      transform: scale(0.98);
-      z-index: 1;
-    }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
 
-    .screen-view.active {
-      opacity: 1;
-      pointer-events: auto;
-      transform: scale(1);
-      z-index: 10;
-    }
+.logo-wrapper svg {
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+}
 
-    /* شريط العنوان العلوي الكلاسيكي */
-    .classic-header {
-      padding: 14px 20px;
-      background: #111722;
-      border-bottom: 1px solid var(--border-classic);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
+/* ── العنوان ── */
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+  text-align: center;
+  letter-spacing: -0.5px;
+}
 
-    .header-branding {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+.subtitle {
+  font-size: 1.05rem;
+  font-weight: 300;
+  color: #9ca3af;
+  text-align: center;
+  line-height: 1.9;
+  margin-bottom: 2.5rem;
+  max-width: 400px;
+}
 
-    .header-logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #1e3a8a, #2563eb);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-    }
+.subtitle strong {
+  color: #d1d5db;
+  font-weight: 500;
+}
 
-    .header-title-text {
-      font-size: 13.5px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.2px;
-    }
+/* ── الشبكة ── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 3rem;
+}
 
-    .header-status-badge {
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 6px;
-      background: var(--accent-gold-soft);
-      color: var(--accent-gold);
-      border: 1px solid rgba(212, 175, 55, 0.3);
-      font-weight: 600;
-    }
+.card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 1.5rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
 
-    /* منطقة التمرير بالرئيسية */
-    .home-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 18px 18px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99,102,241,0.05), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
 
-    /* الترويسة الرئيسية */
-    .hero-classic {
-      text-align: center;
-      padding: 12px 10px 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
+.card:hover {
+  border-color: rgba(99,102,241,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(99,102,241,0.1);
+}
 
-    .hero-title {
-      font-family: 'Amiri', serif;
-      font-size: 26px;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 6px;
-    }
+.card:hover::before {
+  opacity: 1;
+}
 
-    .hero-desc {
-      font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      max-width: 320px;
-      margin: 0 auto 16px;
-    }
+.card-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  display: block;
+  text-align: center;
+}
 
-    /* زر الدخول المباشر للدردشة */
-    .btn-enter-chat {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      width: 100%;
-      background: linear-gradient(180deg, #2563eb, #1d4ed8);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 13px 18px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.35);
-      transition: all 0.2s ease;
-    }
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
 
-    .btn-enter-chat:hover {
-      background: linear-gradient(180deg, #3b82f6, #2563eb);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(29, 78, 216, 0.45);
-    }
+.card-desc {
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: #9ca3af;
+  text-align: center;
+  line-height: 1.7;
+}
 
-    /* شبكة الأقسام المعرفية */
-    .section-title {
-      font-size: 11.5px;
-      font-weight: 700;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+/* ── الفوتر ── */
+.footer {
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  width: 100%;
+}
 
-    .cards-classic-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .card-classic {
-      background: var(--card-bg);
-      border: 1px solid var(--border-classic);
-      border-radius: 12px;
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      height: 98px;
-    }
-
-    .card-classic:hover {
-      background: var(--card-hover);
-      border-color: var(--border-light);
-      transform: translateY(-2px);
-    }
-
-    .card-header-icon {
-      font-size: 18px;
-      color: #60a5fa;
-    }
-
-    .card-heading {
-      font-size: 12.5px;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 2px;
-    }
-
-    .card-caption {
-      font-size: 10px;
-      color: var(--text-muted);
-      line-height: 1.3;
-    }
-
-    /* قائمة الاستفسارات السريعة */
-    .quick-inquiries {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .inquiry-item {
-      background: rgba(26, 35, 50, 0.6);
-      border: 1px solid var(--border-classic);
-      padding: 9px 12px;
-      border-radius: 10px;
-      font-size: 11px;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .inquiry-item:hover {
-      background: var(--card-bg);
-      color: #ffffff;
-      border-color: var(--border-light);
-      padding-right: 15px;
-    }
-
-    /* شريط الإدخال بالرئيسية */
-    .home-input-section {
-      padding: 12px 18px 16px;
-      border-top: 1px solid var(--border-classic);
-      background: #111722;
-      flex-shrink: 0;
-    }
-
-    .input-box-classic {
-      display: flex;
-      align-items: center;
-      background: #1a2332;
-      border: 1px solid var(--border-classic);
-      border-radius: 10px;
-      padding: 4px 6px 4px 12px;
-      gap: 8px;
-    }
-
-    .input-box-classic:focus-within {
-      border-color: var(--primary);
-    }
-
-    .input-classic {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: #ffffff;
-      font-size: 12px;
-      outline: none;
-      text-align: right;
-    }
-
-    .input-classic::placeholder {
-      color: var(--text-muted);
-    }
-
-    .btn-send {
-      background: var(--primary);
-      border: none;
-      color: white;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.2s;
-      flex-shrink: 0;
-    }
-
-    .btn-send:hover {
-      background: var(--primary-dark);
-    }
-
-    /* =================== شاشة الدردشة =================== */
-    .chat-header {
-      padding: 12px 16px;
-      background: #111722;
-      border-bottom: 1px solid var(--border-classic);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-
-    .chat-header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-icon-classic {
-      background: #1a2332;
-      border: 1px solid var(--border-classic);
-      color: var(--text-secondary);
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
-    }
-
-    .btn-icon-classic:hover {
-      background: #243147;
-      color: white;
-    }
-
-    .chat-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #0d1219;
-    }
-
-    .msg-row {
-      display: flex;
-      width: 100%;
-      gap: 8px;
-    }
-
-    .msg-row.user {
-      flex-direction: row-reverse;
-    }
-
-    .msg-bubble {
-      max-width: 86%;
-      padding: 11px 14px;
-      border-radius: 12px;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    .msg-row.user .msg-bubble {
-      background: var(--primary-dark);
-      color: #ffffff;
-      border-bottom-right-radius: 3px;
-    }
-
-    .msg-row.assistant .msg-bubble {
-      background: #161e2a;
-      border: 1px solid var(--border-classic);
-      color: #e2e8f0;
-      border-bottom-left-radius: 3px;
-    }
-
-    .msg-source-tag {
-      font-size: 9.5px;
-      color: var(--text-muted);
-      margin-top: 8px;
-      padding-top: 5px;
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .chat-footer {
-      padding: 10px 14px;
-      background: #111722;
-      border-top: 1px solid var(--border-classic);
-      flex-shrink: 0;
-    }
-
-    /* نافذة البطاقات التفصيلية (Modal) */
-    .classic-modal {
-      display: none;
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      z-index: 50;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .classic-modal.active {
-      display: flex;
-    }
-
-    .modal-box {
-      background: #151c27;
-      border: 1px solid var(--border-light);
-      border-radius: 14px;
-      padding: 18px;
-      width: 100%;
-      max-width: 380px;
-      text-align: right;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border-classic);
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-    }
-
-    .modal-title {
-      font-size: 13.5px;
-      font-weight: 700;
-      color: white;
-    }
-
-    .modal-content-text {
-      font-size: 11.5px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      margin-bottom: 16px;
-    }
-
-    .btn-modal-chat {
-      width: 100%;
-      background: var(--primary);
-      border: none;
-      color: white;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-  </style>
+.footer span {
+  color: #6b7280;
+}
+</style>
 </head>
 <body>
 
-  <main class="app-viewport">
+<div class="container">
 
-    <!-- الشاشة 1: الصفحة الرئيسية الكلاسيكية -->
-    <div id="screen-home" class="screen-view active">
-      
-      <!-- ترويسة المتصفح الكلاسيكية -->
-      <header class="classic-header">
-        <div class="header-branding">
-          <div class="header-logo">🌊</div>
-          <div>
-            <div class="header-title-text">موجة البيان التقنية</div>
-          </div>
-        </div>
-        <div class="header-status-badge">RAG + ChromaDB</div>
-      </header>
+  <!-- الأيقونة -->
+  <div class="logo-wrapper">
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- الموجة الكبرى -->
+      <path d="M10 70 Q25 30 40 55 Q50 20 60 50 Q70 25 80 55 Q90 35 95 65 L95 80 L5 80 Z" fill="url(#waveGrad)" opacity="0.9"/>
+      <path d="M15 72 Q30 45 42 60 Q50 35 58 55 Q68 38 78 62 Q88 48 92 68 L92 78 L8 78 Z" fill="url(#waveGrad2)" opacity="0.7"/>
+      <circle cx="35" cy="42" r="3" fill="white" opacity="0.6"/>
+      <circle cx="55" cy="30" r="2.5" fill="white" opacity="0.5"/>
+      <circle cx="72" cy="38" r="2" fill="white" opacity="0.4"/>
+      <defs>
+        <linearGradient id="waveGrad" x1="0" y1="0" x2="100" y2="100">
+          <stop offset="0%" stop-color="#93c5fd"/>
+          <stop offset="100%" stop-color="#c4b5fd"/>
+        </linearGradient>
+        <linearGradient id="waveGrad2" x1="0" y1="0" x2="100" y2="100">
+          <stop offset="0%" stop-color="#bfdbfe"/>
+          <stop offset="100%" stop-color="#ddd6fe"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
 
-      <!-- محتوى الصفحة الرئيسية -->
-      <div class="home-content">
-        
-        <section class="hero-classic">
-          <h1 class="hero-title">مستشار الذكاء الاصطناعي</h1>
-          <p class="hero-desc">
-            بوابة الإرشاد البرمجي الموثق لنماذج Google Gemini و DeepSeek مع الربط بذاكرة المتجهات السحابية.
-          </p>
-          
-          <!-- زر الدخول للدردشة المباشرة -->
-          <button class="btn-enter-chat" onclick="openChatScreen()">
-            <span>💬</span>
-            <span>الدخول إلى محادثة المستشار</span>
-          </button>
-        </section>
+  <!-- العنوان -->
+  <h1 class="title">منصة موجة البيان</h1>
+  
+  <p class="subtitle">
+    منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي<br>
+    من <strong>DeepSeek</strong> و <strong>Google Gemini</strong>. اختر سؤالاً مقترحًا أو ابدأ محادثتك مباشرة.
+  </p>
 
-        <!-- شبكة المحاور المعرفية -->
-        <div class="section-title">
-          <span>الموضوعات المعتمدة في الذاكرة</span>
-        </div>
-        
-        <section class="cards-classic-grid">
-          <div class="card-classic" onclick="openInfoCard('models')">
-            <div class="card-header-icon">✦</div>
-            <div>
-              <div class="card-heading">أحدث النماذج</div>
-              <div class="card-caption">Gemini 3.8 Flash و DeepSeek</div>
-            </div>
-          </div>
-
-          <div class="card-classic" onclick="openInfoCard('python')">
-            <div class="card-header-icon">⚙</div>
-            <div>
-              <div class="card-heading">التكامل مع Python</div>
-              <div class="card-caption">مكتبة google-genai الحديثة</div>
-            </div>
-          </div>
-
-          <div class="card-classic" onclick="openInfoCard('pricing')">
-            <div class="card-header-icon">◈</div>
-            <div>
-              <div class="card-heading">الأسعار والحدود</div>
-              <div class="card-caption">الخطة المجانية والـ Caching</div>
-            </div>
-          </div>
-
-          <div class="card-classic" onclick="openInfoCard('memory')">
-            <div class="card-header-icon">◉</div>
-            <div>
-              <div class="card-heading">ذاكرة ChromaDB</div>
-              <div class="card-caption">تخزين واسترجاع السياق السحابي</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- استفسارات نموذجية سريعة -->
-        <div class="section-title">
-          <span>استفسارات نموذجية سريعة</span>
-        </div>
-
-        <div class="quick-inquiries">
-          <div class="inquiry-item" onclick="triggerQuery('كود بايثون كامل لربط Google Gemini')">
-            <span>كيف أربط نموذج Gemini عبر بايثون برمجياً؟</span>
-            <span>←</span>
-          </div>
-          <div class="inquiry-item" onclick="triggerQuery('ما هي الحدود والاستهلاك المتاح في الحساب؟')">
-            <span>ما هي حدود الاستخدام والرصيد في الحساب؟</span>
-            <span>←</span>
-          </div>
-          <div class="inquiry-item" onclick="triggerQuery('ما الفرق الجوهري بين Gemini Flash و Pro؟')">
-            <span>مقارنة السرعة والاستدلال بين Flash و Pro</span>
-            <span>←</span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- إدخال سريع من أسفل الرئيسية -->
-      <footer class="home-input-section">
-        <div class="input-box-classic">
-          <input type="text" id="home-input" class="input-classic" placeholder="اطرح استفسارك للدخول التلقائي للمحادثة..." onkeydown="if(event.key==='Enter') submitFromHome();" />
-          <button class="btn-send" onclick="submitFromHome()">➤</button>
-        </div>
-      </footer>
+  <!-- البطاقات -->
+  <div class="grid">
+    
+    <div class="card" onclick="window.location.href='#chat'">
+      <span class="card-icon">⚡</span>
+      <div class="card-title">Flash vs Pro</div>
+      <div class="card-desc">مقارنة شاملة بين النماذج</div>
     </div>
 
-    <!-- الشاشة 2: واجهة المحادثة والدردشة -->
-    <div id="screen-chat" class="screen-view hidden">
-      
-      <header class="chat-header">
-        <div class="header-branding">
-          <button class="btn-icon-classic" onclick="closeChatScreen()" title="العودة للقائمة">✕</button>
-          <div>
-            <div class="header-title-text">مستشار موجة البيان التقني</div>
-            <div style="font-size: 10px; color: var(--text-muted);">سياق موثق مدعوم بـ ChromaDB</div>
-          </div>
-        </div>
-        <div class="chat-header-actions">
-          <button class="btn-icon-classic" onclick="resetChatHistory()" title="إعادة تعيين الجلسة">🔄</button>
-        </div>
-      </header>
-
-      <div id="chat-messages" class="chat-body"></div>
-
-      <footer class="chat-footer">
-        <div class="input-box-classic">
-          <input type="text" id="chat-input" class="input-classic" placeholder="اكتب سؤالك التقني..." onkeydown="if(event.key==='Enter') submitFromChat();" />
-          <button class="btn-send" onclick="submitFromChat()">➤</button>
-        </div>
-      </footer>
+    <div class="card" onclick="window.location.href='#python'">
+      <span class="card-icon">🐍</span>
+      <div class="card-title">البدء مع Python</div>
+      <div class="card-desc">مثال عملي لربط Gemini بـ Python</div>
     </div>
 
-    <!-- نافذة البطاقات التفصيلية (Modal) -->
-    <div id="info-modal" class="classic-modal" onclick="if(event.target===this) closeInfoCard();">
-      <div class="modal-box">
-        <div class="modal-header">
-          <h3 id="modal-title" class="modal-title">تفاصيل</h3>
-          <button class="btn-icon-classic" style="width: 26px; height: 26px;" onclick="closeInfoCard()">✕</button>
-        </div>
-        <div id="modal-body" class="modal-content-text"></div>
-        <button id="modal-chat-cta" class="btn-modal-chat">
-          💬 الدخول للدردشة حول هذا المحور
-        </button>
-      </div>
+    <div class="card" onclick="window.location.href='#models'">
+      <span class="card-icon">✨</span>
+      <div class="card-title">النماذج المتوفرة</div>
+      <div class="card-desc">تعرف على أحدث إصدارات Gemini ومقارنتها</div>
     </div>
 
-  </main>
+    <div class="card" onclick="window.location.href='#pricing'">
+      <span class="card-icon">📊</span>
+      <div class="card-title">الحدود والأسعار</div>
+      <div class="card-desc">تفاصيل الأسعار والقيود لكل نموذج</div>
+    </div>
 
-  <script>
-    /* إدارة الشاشات والانتقال */
-    function openChatScreen() {
-      document.getElementById('screen-home').classList.add('hidden');
-      document.getElementById('screen-home').classList.remove('active');
-      document.getElementById('screen-chat').classList.remove('hidden');
-      document.getElementById('screen-chat').classList.add('active');
-      const chatInput = document.getElementById('chat-input');
-      if (chatInput) chatInput.focus();
-    }
+  </div>
 
-    function closeChatScreen() {
-      document.getElementById('screen-chat').classList.add('hidden');
-      document.getElementById('screen-chat').classList.remove('active');
-      document.getElementById('screen-home').classList.remove('hidden');
-      document.getElementById('screen-home').classList.add('active');
-    }
+  <!-- الفوتر -->
+  <div class="footer">
+    Powered by Gemini 3.8 Flash &bull; موجة البيان &copy; 2026
+  </div>
 
-    function submitFromHome() {
-      const input = document.getElementById('home-input');
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-      openChatScreen();
-      sendChatMessage(text);
-    }
+</div>
 
-    function submitFromChat() {
-      const input = document.getElementById('chat-input');
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-      sendChatMessage(text);
-    }
-
-    function triggerQuery(text) {
-      openChatScreen();
-      sendChatMessage(text);
-    }
-
-    /* سجل المحادثة */
-    let chatHistory = [
-      {
-        role: "assistant",
-        text: "أهلاً بك في منصة موجة البيان للدعم الفني. أنا مستشارك المزوّد بنظام التحكيم وذاكرة ChromaDB السحابية. كيف يمكنني إرشادك برمجياً اليوم؟",
-        timestamp: "الآن"
-      }
-    ];
-
-    function renderChatMessages() {
-      const container = document.getElementById('chat-messages');
-      if (!container) return;
-
-      let html = '';
-      for (let i = 0; i < chatHistory.length; i++) {
-        const msg = chatHistory[i];
-        if (msg.role === 'user') {
-          html += `
-            <div class="msg-row user">
-              <div class="msg-bubble">
-                <div>${escapeHtml(msg.text)}</div>
-              </div>
-            </div>`;
-        } else {
-          html += `
-            <div class="msg-row assistant">
-              <div class="msg-bubble">
-                <div>${formatMarkdown(msg.text)}</div>
-                <div class="msg-source-tag">
-                  <span>منصة موجة البيان • ${msg.timestamp}</span>
-                </div>
-              </div>
-            </div>`;
-        }
-      }
-
-      container.innerHTML = html;
-      container.scrollTop = container.scrollHeight;
-    }
-
-    /* إرسال السؤال إلى خادم Render (/api/chat) */
-    async function sendChatMessage(queryText) {
-      if (!queryText.trim()) return;
-
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-
-      chatHistory.push({
-        role: "user",
-        text: queryText,
-        timestamp: timeStr
-      });
-      renderChatMessages();
-
-      // مؤشر كتابة مؤقت
-      chatHistory.push({
-        role: "assistant",
-        text: "جاري استرجاع السياق وصياغة الإجابة المعتمدة...",
-        timestamp: "جاري المعالجة"
-      });
-      renderChatMessages();
-
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: queryText })
-        });
-
-        chatHistory.pop(); // حذف مؤشر المعالجة
-
-        if (response.ok) {
-          const data = await response.json();
-          chatHistory.push({
-            role: "assistant",
-            text: data.text || data.answer || "تمت معالجة استفسارك بنجاح.",
-            timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-          });
-        } else {
-          // استجابة احتياطية ذكية في حال عدم الاتصال بالخادم
-          chatHistory.push({
-            role: "assistant",
-            text: getFallbackAnswer(queryText),
-            timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-          });
-        }
-      } catch (err) {
-        chatHistory.pop();
-        chatHistory.push({
-          role: "assistant",
-          text: getFallbackAnswer(queryText),
-          timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-        });
-      }
-
-      renderChatMessages();
-    }
-
-    function getFallbackAnswer(q) {
-      if (q.includes("بايثون") || q.includes("كود")) {
-        return "لربط نماذج Gemini في بيئة بايثون:\n1. قم بتثبيت الحزمة: `pip install google-genai`\n2. استدعِ النموذج: `from google import genai; client = genai.Client()`\n3. وللتخزين الدائم، استخدم مكتبة `chromadb` مع المتغيرات البيئية في Render.";
-      }
-      return "تم استلام استفسارك وتسجيله في سجل النظام. نحن جاهزون دائماً لتقديم المساعدة البرمجية اللازمة.";
-    }
-
-    function resetChatHistory() {
-      if (confirm('هل ترغب في بدء جلسة استشارية جديدة؟')) {
-        chatHistory = [
-          {
-            role: "assistant",
-            text: "تم بدء جلسة محادثة جديدة. تفضل بطرح أي سؤال وسأزودك بالإجابة الموثقة فوراً.",
-            timestamp: "الآن"
-          }
-        ];
-        renderChatMessages();
-      }
-    }
-
-    /* بيانات البطاقات المعرفية */
-    const CARD_DATA = {
-      models: {
-        title: "أحدث إصدارات النماذج",
-        text: "• **Gemini 3.8 Flash:** النموذج فائق السرعة والأوفر تكلفة للمحادثات الفورية بسياق مليون رمز.\n• **Gemini 3.1 Pro:** مخصص للمهام الهندسية والبرمجية المعقدة بسياق مليوني رمز.\n• **DeepSeek V3 / R1:** نماذج الاستدلال والتفكير العميق وحل المسائل البرمجية بدقة.",
-        prompt: "قارن بين Gemini 3.8 Flash و DeepSeek في بيئات الإنتاج البرمجية"
-      },
-      python: {
-        title: "الربط البرمجي عبر Python",
-        text: "يتم استخدام الحزمة الرسمية الموحدة:\n`pip install google-genai`\nتسمح لك الحزمة بالربط مع نماذج Flash و Pro بسهولة واسترجاع المتجهات للتخزين في سحابة ChromaDB.",
-        prompt: "اكتب لي كود بايثون كامل لاستخدام نموذج Gemini مع استرجاع البيانات"
-      },
-      pricing: {
-        title: "الحدود والأسعار والتوفير",
-        text: "• **الخطة المجانية:** تتيح حتى 15 طلباً بالدقيقة (RPM) مجاناً بالكامل.\n• **Context Caching:** تخفيض بنسبة 75% على السياقات الطويلة المتكررة لتوفير التكلفة التشغيلية.",
-        prompt: "اشرح لي بالتفصيل كيفية حساب تكلفة الاستهلاك مع ميزة Context Caching"
-      },
-      memory: {
-        title: "ذاكرة ChromaDB السحابية",
-        text: "تعتمد المنصة على قاعدة بيانات المتجهات ChromaDB لتخزين وفهرسة المحادثات والمستندات واسترجاعها بدقة عند ورود أي استفسار.",
-        prompt: "كيف يعمل نظام استرجاع الذاكرة RAG مع قاعدة بيانات ChromaDB؟"
-      }
-    };
-
-    function openInfoCard(id) {
-      const data = CARD_DATA[id];
-      if (!data) return;
-      document.getElementById('modal-title').innerText = data.title;
-      document.getElementById('modal-body').innerHTML = formatMarkdown(data.text);
-      const cta = document.getElementById('modal-chat-cta');
-      cta.onclick = () => {
-        closeInfoCard();
-        openChatScreen();
-        sendChatMessage(data.prompt);
-      };
-      document.getElementById('info-modal').classList.add('active');
-    }
-
-    function closeInfoCard() {
-      document.getElementById('info-modal').classList.remove('active');
-    }
-
-    function escapeHtml(text) {
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function formatMarkdown(text) {
-      if (!text) return '';
-      return text
-        .replace(/\n/g, '<br>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/`(.*?)`/g, '<code style="background: rgba(255,255,255,0.08); padding: 2px 4px; border-radius: 4px; font-family: monospace;">$1</code>');
-    }
-
-    document.addEventListener('DOMContentLoaded', renderChatMessages);
-  </script>
 </body>
 </html>
