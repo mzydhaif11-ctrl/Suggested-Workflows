@@ -1,5 +1,7 @@
 {
     "githubPullRequests.ignoredPullRequestBranches": [
         "main"
-    ]
+    ],
+    "workbench.colorTheme": "Kimbie Dark",
+    "editor.mouseWheelZoom": true
 }
