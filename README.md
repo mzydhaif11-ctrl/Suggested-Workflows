@@ -17,8 +17,4 @@
 
 ---
 
-## 🛠️ المتغيرات البيئية (Environment Variables)
-```env
-GEMINI_API_KEY=your_gemini_api_key
-QDRANT_URL=your_qdrant_url
-QDRANT_API_KEY=your_qdrant_api_key
+## 🛠️ المتغيرات البيئية (Environment Variables
