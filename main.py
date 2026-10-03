@@ -46,22 +46,36 @@ def ask_question(request: QueryRequest):
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="السؤال لا يمكن أن يكون فارغاً.")
 
-    # 1. تحويل سؤال المستخدم إلى متجه رقمي
-    embed_response = genai_client.models.embed_content(
-        model="text-embedding-004",
-        contents=request.question,
-        config=types.EmbedContentConfig(
-            task_type="RETRIEVAL_QUERY"
-        ),
-    )
-    query_vector = embed_response.embedding.values
+    try:
+        # 1. تحويل سؤال المستخدم إلى متجه رقمي
+        embed_response = genai_client.models.embed_content(
+            model="text-embedding-004",
+            contents=request.question,
+            config=types.EmbedContentConfig(
+                task_type="RETRIEVAL_QUERY"
+            )
+        )
+        
+        # استخراج المتجه (حسب إصدار مكتبة genai الجديد)
+        if hasattr(embed_response, 'embeddings') and embed_response.embeddings:
+            query_vector = embed_response.embeddings[0].values
+        else:
+            query_vector = embed_response.embedding.values
+
+    except Exception as e:
+        print(f"Embedding Error: {e}")
+        raise HTTPException(status_code=500, detail="حدث خطأ أثناء تحويل السؤال في نماذج Gemini.")
 
     # 2. البحث الدلالي في قاعدة بيانات Qdrant
-    search_results = qdrant_client.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=query_vector,
-        limit=3,
-    )
+    try:
+        search_results = qdrant_client.search(
+            collection_name=COLLECTION_NAME,
+            query_vector=query_vector,
+            limit=3,
+        )
+    except Exception as e:
+        print(f"Qdrant Search Error: {e}")
+        raise HTTPException(status_code=500, detail="تعذر الاتصال بقاعدة بيانات Qdrant.")
 
     if not search_results:
         return QueryResponse(
@@ -84,10 +98,14 @@ def ask_question(request: QueryRequest):
 {request.question}
 """
 
-    gen_response = genai_client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
+    try:
+        gen_response = genai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+    except Exception as e:
+        print(f"Generation Error: {e}")
+        raise HTTPException(status_code=500, detail="حدث خطأ أثناء صياغة الإجابة.")
 
     return QueryResponse(
         answer=gen_response.text or "تعذر توليد رد.",
