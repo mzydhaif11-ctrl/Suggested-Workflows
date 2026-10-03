@@ -23,7 +23,6 @@ app.add_middleware(
 engine = GroundedRAGEngine()
 
 class ChatRequest(BaseModel):
-    # تم إضافة message ليتطابق مع ما ترسله واجهة HTML
     message: Optional[str] = None
     query: Optional[str] = None
     api_key: Optional[str] = None
@@ -54,20 +53,18 @@ async def get_topics():
 
 @app.post("/api/search")
 async def search_docs(req: SearchRequest):
-    if not req.query.strip():
+    if not req.query or not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
     results = engine.search(req.query, top_k=req.top_k)
     return {"query": req.query, "results": results}
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    # نأخذ النص سواء أرسلته الواجهة كـ message أو query
     user_input = req.message or req.query
     
     if not user_input or not user_input.strip():
         raise HTTPException(status_code=400, detail="النص المرسل فارغ")
 
-    # الأمان أولاً: استخدام مفتاح المستخدم إن وجد، أو جلب المفتاح المحمي من خادم ريندر
     final_key = req.api_key or os.environ.get("GEMINI_API_KEY")
 
     if not final_key:
@@ -77,23 +74,20 @@ async def chat(req: ChatRequest):
         )
 
     try:
-        # جلب الرد من محرك RAG
         result = engine.answer_query(user_input, gemini_api_key=final_key)
         
-        # --- تهيئة الرد ليتوافق مع واجهة HTML ---
-        if isinstance(result, str):
-            # إذا كان الرد مجرد نص، نحوله إلى JSON
-            return {"text": result, "model": "Gemini RAG Engine"}
-        elif isinstance(result, dict):
-            # إذا كان قاموساً، نضمن وجود مفتاح text
-            if "text" not in result and "response" not in result:
-                return {"text": str(result), "model": "Gemini RAG Engine"}
-            return result
+        # استخراج النص الصافي ومنع ظهور مفاتيح القاموس البرمجي
+        if isinstance(result, dict):
+            pure_text = result.get("answer") or result.get("text") or result.get("response") or str(result)
+        elif isinstance(result, str):
+            pure_text = result
         else:
-            return {"text": str(result), "model": "Gemini RAG Engine"}
+            pure_text = str(result)
+            
+        return {"text": pure_text, "model": "Gemini RAG Engine"}
             
     except Exception as e:
-         raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
