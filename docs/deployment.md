@@ -8,6 +8,8 @@
 * Python 3.10+
 * حساب في Google AI Studio (للحصول على `GEMINI_API_KEY`)
 * حساب أو خادم Qdrant (للحصول على `QDRANT_URL` و `QDRANT_API_KEY`)
+* 
+
 
 ### الخطوات:
 1. استنسخ المستودع:
