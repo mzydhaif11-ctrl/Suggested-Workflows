@@ -1,5 +1,6 @@
 import os
 from typing import List, Optional
+import chromadb
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -8,7 +9,7 @@ from rag_engine import GroundedRAGEngine
 
 app = FastAPI(
     title="منصة موجة البيان للدعم الفني",
-    description="نظام دعم فني يعتمد على وثائق Gemini API الرسمية ومحرك RAG",
+    description="نظام دعم فني يعتمد على وثائق Gemini API الرسمية ومحرك RAG مع دعم ChromaDB Cloud",
     version="1.0.0",
 )
 
@@ -20,8 +21,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==========================================
+# إعداد الاتصال بقاعدة بيانات ChromaDB السحابية
+# ==========================================
+chroma_url = os.environ.get("CHROMA_URL")
+chroma_api_key = os.environ.get("CHROMA_API_KEY")
+chroma_tenant = os.environ.get("CHROMA_TENANT")
+
+chroma_client = None
+chroma_collection = None
+
+# التحقق من توفر المتغيرات للاتصال بسحابة ChromaDB
+if chroma_url and chroma_api_key:
+    try:
+        connect_kwargs = {
+            "host": chroma_url,
+            "headers": {"Authorization": f"Bearer {chroma_api_key}"}
+        }
+        if chroma_tenant:
+            connect_kwargs["tenant"] = chroma_tenant
+            connect_kwargs["database"] = "default_database"
+
+        chroma_client = chromadb.HttpClient(**connect_kwargs)
+        chroma_collection = chroma_client.get_or_create_collection(name="tech_advisor_collection")
+        print(" تم الاتصال بـ ChromaDB Cloud بنجاح مع هوية المستأجر.")
+    except Exception as e:
+        print(f" تعذر الاتصال بـ ChromaDB: {e}")
+
+# تهيئة محرك RAG الأصلي
 engine = GroundedRAGEngine()
 
+# ==========================================
+# نماذج الطلبات (Models)
+# ==========================================
 class ChatRequest(BaseModel):
     message: Optional[str] = None
     query: Optional[str] = None
@@ -31,6 +63,9 @@ class SearchRequest(BaseModel):
     query: str
     top_k: Optional[int] = 5
 
+# ==========================================
+# مسارات التطبيق (Endpoints)
+# ==========================================
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
     index_file = os.path.join(os.path.dirname(__file__), "static", "index.html")
@@ -40,14 +75,19 @@ async def read_index():
 
 @app.get("/api/health")
 async def health():
-    return {"status": "healthy", "indexed_documents": len(engine.documents)}
+    return {
+        "status": "healthy",
+        "indexed_documents": len(getattr(engine, "documents", [])),
+        "chroma_connected": chroma_client is not None,
+    }
 
 @app.get("/api/topics")
 async def get_topics():
+    docs = getattr(engine, "documents", [])
     return {
         "topics": [
-            {"title": d["title"], "url": d["url"], "filename": d["filename"]}
-            for d in engine.documents[:15]
+            {"title": d.get("title", ""), "url": d.get("url", ""), "filename": d.get("filename", "")}
+            for d in docs[:15]
         ]
     }
 
