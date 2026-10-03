@@ -1,3 +1,4 @@
 fastapi
 uvicorn
 chromadb
+openai>=1.0.0
