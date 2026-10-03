@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -7,156 +7,313 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --bg-dark: #0c0f17;
-      --card-bg: #151924;
-      --card-border: #262c3d;
+    /* ---------------- المتغيرات والألوان (ليلي ونهاري) ---------------- */
+    :root[data-theme="dark"] {
+      --bg-body: #070a12;
+      --bg-surface: #0e1322;
+      --bg-card: #141a2c;
+      --bg-input: #101626;
+      --border: #22293d;
+      --border-hover: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #8e97af;
       --primary: #4f8cff;
-      --purple: #7c3aed;
-      --success: #10b981;
-      --text: #f3f4f8;
-      --text-muted: #8e95a8;
+      --primary-hover: #3b82f6;
+      --primary-gradient: linear-gradient(135deg, #4f8cff, #7c3aed);
+      --accent-pin: #f59e0b;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
+
+    :root[data-theme="light"] {
+      --bg-body: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-input: #f1f5f9;
+      --border: #e2e8f0;
+      --border-hover: #6366f1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-gradient: linear-gradient(135deg, #4f46e5, #7c3aed);
+      --accent-pin: #d97706;
+      --shadow: 0 10px 25px rgba(100, 116, 139, 0.12);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.25s ease, border-color 0.25s ease;
     }
-    html, body {
-      height: 100%;
-      background: var(--bg-dark);
-      color: var(--text);
-    }
+
     body {
+      background: var(--bg-body);
+      color: var(--text);
+      min-height: 100vh;
       display: flex;
       justify-content: center;
-      padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+      padding: env(safe-area-inset-top, 10px) 12px env(safe-area-inset-bottom, 10px);
     }
+
     .hidden { display: none !important; }
 
-    /* الشاشة الرئيسية */
-    #home {
+    /* ---------------- إطار المنصة الرئيسي ---------------- */
+    .app-wrapper {
       width: 100%;
-      max-width: 520px;
-      min-height: 100%;
+      max-width: 500px;
       display: flex;
       flex-direction: column;
+      position: relative;
+    }
+
+    /* ---------------- شريط التنقل العلوي ---------------- */
+    header {
+      display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      padding: 24px 20px 20px;
-      text-align: center;
+      padding: 12px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
     }
-    .hero-top {
+
+    .header-right {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      margin-top: 10px;
+      gap: 8px;
+      position: relative;
     }
-    .logo-badge {
-      width: 96px;
-      height: 96px;
-      border-radius: 28px;
-      background: linear-gradient(135deg, var(--primary), var(--purple));
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 11px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-icon:hover { border-color: var(--border-hover); }
+
+    /* قائمة الخيارات المنبثقة = */
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 46px;
+      right: 0;
+      width: 220px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      padding: 6px;
+      z-index: 100;
+      text-align: right;
+    }
+    .dropdown-menu.show { display: block; animation: dropIn 0.2s ease; }
+    .dropdown-item {
+      width: 100%;
+      padding: 9px 12px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: right;
+    }
+    .dropdown-item:hover { background: var(--bg-input); }
+    @keyframes dropIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* زر تبديل الوضع النهاري / الليلي */
+    .theme-toggle {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    /* ---------------- المحتوى والواجهة ---------------- */
+    .hero {
+      text-align: center;
+      padding: 10px 10px 16px;
+    }
+    .logo-container {
+      width: 86px;
+      height: 86px;
+      border-radius: 26px;
+      background: var(--primary-gradient);
       display: grid;
       place-items: center;
-      font-size: 46px;
-      box-shadow: 0 12px 35px rgba(79, 140, 255, 0.35);
-      margin-bottom: 20px;
+      font-size: 42px;
+      margin: 0 auto 14px;
+      box-shadow: 0 12px 30px rgba(79, 140, 255, 0.35);
       cursor: pointer;
-      transition: transform 0.2s;
     }
-    .logo-badge:hover { transform: scale(1.04); }
     h1 {
-      font-size: 30px;
+      font-size: 26px;
       font-weight: 900;
-      margin-bottom: 12px;
-      background: linear-gradient(90deg, #60a5fa, #a78bfa);
+      margin-bottom: 8px;
+      background: var(--primary-gradient);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
     }
-    .desc {
+    .hero p {
+      font-size: 13.5px;
       color: var(--text-muted);
-      font-size: 15px;
       line-height: 1.8;
-      max-width: 440px;
-      margin-bottom: 24px;
+      max-width: 380px;
+      margin: 0 auto;
     }
-    .grid {
-      width: 100%;
+
+    /* ---------------- شريط لوحة التحكم فوق البطاقات ---------------- */
+    .dashboard-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .dashboard-toolbar b { color: var(--text); }
+    .btn-customize {
+      background: transparent;
+      border: 1px dashed var(--accent-pin);
+      color: var(--accent-pin);
+      padding: 5px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-customize:hover { background: rgba(245, 158, 11, 0.1); }
+
+    /* ---------------- شبكة بطاقات الخدمات (ActionCards) ---------------- */
+    .grid-cards {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 18px;
     }
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 22px;
-      padding: 18px 16px;
+    .service-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px 14px;
       text-align: right;
-      min-height: 145px;
+      min-height: 140px;
       cursor: pointer;
-      color: inherit;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: transform 0.2s, border-color 0.2s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
     }
-    .card:hover {
-      border-color: #5b6cff;
-      background: #1b202e;
+    .service-card:hover {
+      border-color: var(--primary);
       transform: translateY(-2px);
     }
-    .card .ic { font-size: 26px; margin-bottom: 8px; }
-    .card b { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: block; }
-    .card span { color: var(--text-muted); font-size: 12px; line-height: 1.5; display: block; }
+    .service-card.is-pinned {
+      border-color: var(--accent-pin);
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), var(--bg-card));
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-ic { font-size: 24px; }
+    .pin-badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-pin);
+      border: 1px solid var(--accent-pin);
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 5px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 3px;
+      display: block;
+      color: var(--text);
+    }
+    .card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      display: block;
+    }
 
-    /* شريط الإرسال السريع مع تجربة التحميل */
-    .quick-bar {
-      width: 100%;
-      background: #131722;
-      border: 1px solid var(--card-border);
+    /* ---------------- شريط الإرسال السريع ومحاكاة التحميل ---------------- */
+    .quick-submit-bar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 6px 8px 6px 14px;
+      padding: 6px 8px 6px 12px;
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 8px;
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
     }
     .quick-input {
       flex: 1;
       background: transparent;
       border: none;
-      color: #fff;
+      color: var(--text);
       font-size: 13.5px;
       outline: none;
     }
-    .quick-input::placeholder { color: #5a6275; }
-    .btn-submit {
-      padding: 10px 18px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--primary), var(--purple));
+    .btn-send {
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: var(--primary-gradient);
       color: #fff;
       border: none;
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: all 0.2s;
     }
-    .btn-submit:hover:not(:disabled) { opacity: 0.95; transform: scale(1.02); }
-    .btn-submit:disabled { opacity: 0.8; cursor: wait; }
+    .btn-send:hover:not(:disabled) { opacity: 0.95; }
+    .btn-send:disabled { opacity: 0.75; cursor: wait; }
 
     /* دوران التحميل CSS Spinner */
     .spinner {
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       border: 2px solid rgba(255, 255, 255, 0.3);
       border-top-color: #ffffff;
       border-radius: 50%;
@@ -165,456 +322,657 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* شريط رسالة النجاح */
-    .success-alert {
+    .success-badge {
       display: none;
-      width: 100%;
       background: rgba(16, 185, 129, 0.15);
       border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #34d399;
+      color: #10b981;
       padding: 10px;
       border-radius: 14px;
       font-size: 13px;
       font-weight: 700;
-      margin-bottom: 14px;
-      animation: fadeInScale 0.3s ease;
+      text-align: center;
+      margin-bottom: 12px;
+      animation: zoomIn 0.3s ease;
     }
-    .success-alert.show {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .success-badge.show { display: block; }
+    @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-    .foot { color: #5f6577; font-size: 12px; margin-top: auto; }
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: auto;
+      padding: 14px 0;
+    }
 
-    /* شاشة الدردشة والمحادثة */
-    #chat {
-      width: 100%;
-      max-width: 520px;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    .top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--card-border);
-      background: #111520;
-    }
-    .top-left { display: flex; align-items: center; gap: 10px; }
-    .back {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      border: 1px solid var(--card-border);
-      background: #171b26;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .mini {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--primary), var(--purple));
-      display: grid;
-      place-items: center;
-      font-size: 17px;
-    }
-    .top b { font-size: 15px; }
-    .top small { display: block; color: var(--text-muted); font-size: 11px; }
-
-    #msgs { flex: 1; overflow-y: auto; padding: 16px; }
-    .m {
-      max-width: 86%;
-      padding: 12px 16px;
-      border-radius: 18px;
-      margin: 10px 0;
-      line-height: 1.8;
-      font-size: 14.5px;
-      white-space: pre-wrap;
-      animation: msgIn 0.25s;
-    }
-    .me {
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
-      color: #fff;
-      border-bottom-left-radius: 4px;
-      margin-right: auto;
-    }
-    .bot {
-      background: #181d2a;
-      border: 1px solid var(--card-border);
-      border-bottom-right-radius: 4px;
-      margin-left: auto;
-    }
-    .bot pre {
-      direction: ltr;
-      text-align: left;
-      background: #090c14;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 12px;
-      margin-top: 8px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
-      color: #a5b4fc;
-      overflow-x: auto;
-    }
-    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } }
-
-    form.chat-form {
-      display: flex;
-      gap: 10px;
-      padding: 12px 16px;
-      border-top: 1px solid var(--card-border);
-      background: #111520;
-    }
-    .chat-input {
-      flex: 1;
-      background: #171b26;
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 12px 14px;
-      color: #fff;
-      font-size: 14px;
-      outline: none;
-    }
-    .chat-input:focus { border-color: #5b6cff; }
-
-    /* النوافذ المنبثقة التفاعلية للبطاقات */
+    /* ---------------- النوافذ المنبثقة التفاعلية (Modals) ---------------- */
     .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(8px);
-      z-index: 100;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 200;
       justify-content: center;
-      align-items: flex-end;
+      align-items: center;
+      padding: 16px;
     }
     .modal-overlay.active { display: flex; }
-    .modal-content {
+    .modal-box {
       width: 100%;
-      max-width: 520px;
-      background: #111522;
-      border-top: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 28px 28px 0 0;
-      padding: 24px 20px;
+      max-width: 440px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 22px;
       max-height: 85vh;
       overflow-y: auto;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
       text-align: right;
     }
-    .modal-hdr {
+    .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
       margin-bottom: 14px;
     }
-    .btn-close {
-      background: #1b202e;
-      border: 1px solid var(--card-border);
+    .modal-header h3 { font-size: 16px; font-weight: 800; }
+    .close-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 4px 12px;
+      padding: 4px 10px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 12px;
+    }
+
+    /* أسطر قائمة لوحة التحكم */
+    .dash-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    .dash-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dash-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .dash-btn.active {
+      background: var(--accent-pin);
+      color: #fff;
+      border-color: var(--accent-pin);
+    }
+
+    /* أكواد بايثون */
+    pre.code-box {
+      direction: ltr;
+      text-align: left;
+      background: #090c14;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: #a5b4fc;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    /* شاشة الدردشة المتكاملة */
+    #chatScreen {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 500px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    #chatMsgs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 4px;
+    }
+    .msg {
+      padding: 10px 14px;
+      border-radius: 16px;
+      margin: 8px 0;
+      font-size: 13.5px;
+      line-height: 1.8;
+      max-width: 85%;
+      white-space: pre-wrap;
+    }
+    .msg.me {
+      background: var(--primary-gradient);
+      color: #fff;
+      margin-right: auto;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.bot {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
     }
   </style>
 </head>
 <body>
 
-  <!-- الشاشة الرئيسية -->
-  <section id="home">
-    <div class="hero-top">
-      <div class="logo-badge" onclick="openChat()">🌊</div>
-      <h1>منصة موجة البيان</h1>
-      <p class="desc">
-        منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek. اختر سؤالاً مقترحًا أو ابدأ محادثتك مباشرة.
-      </p>
-    </div>
+  <!-- ================= الواجهة الرئيسية ================= -->
+  <div class="app-wrapper" id="homeView">
+    <!-- شريط التنقل العلوي -->
+    <header>
+      <div class="header-right">
+        <!-- زر الخيارات = في أعلى الصفحة على اليمين -->
+        <button class="btn-icon" onclick="toggleDropdown()" title="خيارات المنصة والحساب">
+          <span>☰</span>
+          <span style="font-size: 12px;">=</span>
+        </button>
 
-    <!-- البطاقات الأربع التفاعلية -->
-    <div class="grid">
-      <button class="card" onclick="openInfoModal('models')">
-        <span class="ic">✨</span>
-        <b>النماذج المتوفرة</b>
-        <span>تعرف على أحدث إصدارات Gemini ومقارنتها</span>
-      </button>
+        <!-- زر تسجيل الدخول والحساب -->
+        <button class="btn-icon" onclick="openModal('authModal')">
+          <span>👤</span>
+          <span id="userNameLabel">تسجيل الدخول</span>
+        </button>
 
-      <button class="card" onclick="openInfoModal('python')">
-        <span class="ic">🐍</span>
-        <b>البدء مع Python</b>
-        <span>مثال عملي لربط Gemini بـ Python</span>
-      </button>
-
-      <button class="card" onclick="openInfoModal('flash')">
-        <span class="ic">⚡</span>
-        <b>Flash vs Pro</b>
-        <span>مقارنة شاملة بين النماذج</span>
-      </button>
-
-      <button class="card" onclick="openInfoModal('limits')">
-        <span class="ic">📊</span>
-        <b>الحدود والأسعار</b>
-        <span>تفاصيل الأسعار والقيود لكل نموذج</span>
-      </button>
-    </div>
-
-    <!-- شريط الإرسال السريع مع تجربة محاكاة التحميل 3 ثوانٍ -->
-    <form class="quick-bar" id="quickForm" onsubmit="handleQuickSubmit(event)">
-      <input type="text" id="quickInput" class="quick-input" placeholder="اكتب سؤالك التقني هنا..." required />
-      <button type="submit" id="quickBtn" class="btn-submit">
-        <span id="quickBtnText">إرسال</span>
-        <div id="quickSpinner" class="spinner" style="display: none;"></div>
-      </button>
-    </form>
-
-    <!-- تنبيه تم الإرسال بنجاح -->
-    <div id="successAlert" class="success-alert">
-      <span>✓</span>
-      <span>تم الإرسال بنجاح (اكتملت المحاكاة خلال 3 ثوانٍ)</span>
-    </div>
-
-    <div class="foot">2026 © موجة البيان • Powered by Gemini 3.8 Flash</div>
-  </section>
-
-  <!-- شاشة المحادثة المباشرة -->
-  <section id="chat" class="hidden">
-    <div class="top">
-      <div class="top-left">
-        <button class="back" onclick="closeChat()">→</button>
-        <div class="mini">🌊</div>
-        <div>
-          <b>مستشار موجة البيان</b>
-          <small id="chatStatus">متصل بمحرك RAG</small>
+        <!-- القائمة المنسدلة -->
+        <div class="dropdown-menu" id="dropdownMenu">
+          <button class="dropdown-item" onclick="openModal('dashboardModal'); toggleDropdown();">
+            <span>📌</span>
+            <span>لوحة التحكم الشخصية (ترتيب وتثبيت)</span>
+          </button>
+          <button class="dropdown-item" onclick="openModal('authModal'); toggleDropdown();">
+            <span>👤</span>
+            <span>حسابي والدخول</span>
+          </button>
+          <button class="dropdown-item" onclick="openModal('fastapiModal'); toggleDropdown();">
+            <span>🗄️</span>
+            <span>خادم FastAPI وقاعدة البيانات</span>
+          </button>
         </div>
       </div>
-      <button class="btn-close" onclick="closeChat()">الرئيسية</button>
+
+      <div class="header-left">
+        <!-- زر لوحة التحكم الشخصية السريع -->
+        <button class="btn-icon" onclick="openModal('dashboardModal')" style="color: var(--accent-pin); border-color: var(--accent-pin);" title="تخصيص وترتيب البطاقات">
+          <span>📌</span>
+          <span style="font-size: 11px;">لوحة التحكم</span>
+        </button>
+
+        <!-- زر تبديل الوضع الليلي / النهاري -->
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="تبديل الوضع الليلي والنهاري">
+          🌙
+        </button>
+      </div>
+    </header>
+
+    <!-- منطقة البطل والشعار -->
+    <div class="hero">
+      <div class="logo-container" onclick="openChatView()">🌊</div>
+      <h1>منصة موجة البيان</h1>
+      <p>منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek. رتّب خدماتك المفضلة وابدأ محادثتك فوراً.</p>
     </div>
 
-    <div id="msgs"></div>
+    <!-- شريط لوحة التحكم الشخصية المباشر -->
+    <div class="dashboard-toolbar">
+      <b>بطاقات الخدمات الذكية:</b>
+      <button class="btn-customize" onclick="openModal('dashboardModal')">
+        <span>⚙️</span>
+        <span>تخصيص وترتيب البطاقات</span>
+      </button>
+    </div>
 
-    <form class="chat-form" id="chatForm" onsubmit="handleChatSubmit(event)">
-      <input id="chatInput" class="chat-input" placeholder="اكتب استفسارك للذكاء الاصطناعي…" autocomplete="off" />
-      <button type="submit" id="chatBtn" class="btn-submit">
-        <span id="chatBtnText">إرسال</span>
-        <div id="chatSpinner" class="spinner" style="display: none;"></div>
+    <!-- شبكة بطاقات الخدمات (يتم ترتيبها وتثبيتها برمجياً) -->
+    <div class="grid-cards" id="cardsContainer"></div>
+
+    <!-- نموذج الإرسال مع محاكاة التحميل لـ 3 ثوانٍ -->
+    <form class="quick-submit-bar" id="submitForm" onsubmit="handleSimulatedSubmit(event)">
+      <input type="text" id="promptInput" class="quick-input" placeholder="اكتب سؤالك لـ Gemini أو DeepSeek..." required />
+      <button type="submit" id="submitBtn" class="btn-send">
+        <span id="submitBtnText">إرسال</span>
+        <div id="submitSpinner" class="spinner" style="display: none;"></div>
       </button>
     </form>
-  </section>
 
-  <!-- نافذة تفاصيل البطاقات المنبثقة -->
-  <div class="modal-overlay" id="modalOverlay" onclick="closeInfoModal(event)">
-    <div class="modal-content" id="modalContent"></div>
+    <!-- شريط التنبيه عند نجاح الإرسال (3 ثوانٍ) -->
+    <div id="successNotice" class="success-badge">
+      ✓ تم الإرسال بنجاح (اكتمل التحميل خلال 3 ثوانٍ)
+    </div>
+
+    <footer>2026 © منصة موجة البيان • Powered by Gemini 3.8 Flash & FastAPI</footer>
   </div>
 
+  <!-- ================= شاشة المحادثة الكاملة ================= -->
+  <div class="app-wrapper hidden" id="chatView">
+    <header>
+      <button class="btn-icon" onclick="closeChatView()">→ الرجوع للرئيسية</button>
+      <b style="font-size: 14px;">مستشار موجة البيان</b>
+      <span style="font-size: 11px; color: #10b981;">● متصل</span>
+    </header>
+    <div id="chatMsgs"></div>
+    <form class="quick-submit-bar" onsubmit="handleChatQuery(event)">
+      <input type="text" id="chatInput" class="quick-input" placeholder="اكتب رسالتك هنا…" required />
+      <button type="submit" class="btn-send">إرسال</button>
+    </form>
+  </div>
+
+  <!-- ================= 1. نافذة لوحة التحكم الشخصية ================= -->
+  <div class="modal-overlay" id="dashboardModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📌 لوحة التحكم الشخصية (ترتيب وتثبيت الخدمات)</h3>
+        <button class="close-btn" onclick="closeModal('dashboardModal')">إغلاق</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+        قم بتقديم الخدمات وتأخيرها أو تثبيت الخدمات الأكثر استخداماً لتتصدر الواجهة:
+      </p>
+
+      <div id="dashboardCardsList"></div>
+
+      <button class="btn-send" style="width: 100%; margin-top: 14px; justify-content: center;" onclick="resetCardsDefault()">
+        استعادة الترتيب الافتراضي
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= 2. نافذة تسجيل الدخول بخيارات متعددة ================= -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="authTitle">تسجيل الدخول لمنصة البيان</h3>
+        <button class="close-btn" onclick="closeModal('authModal')">إغلاق</button>
+      </div>
+
+      <div id="authContent" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- الدخول كضيف -->
+        <button class="btn-icon" style="justify-content: center; padding: 12px;" onclick="loginAs('ضيف المنصة')">
+          ⚡ الدخول المباشر كزائر / ضيف (Guest)
+        </button>
+
+        <div style="text-align: center; font-size: 11px; color: var(--text-muted);">أو تسجيل الدخول السريع:</div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="btn-icon" style="justify-content: center;" onclick="loginAs('مستخدم Google')">
+            <span style="color: #ef4444;">G</span> حساب Google
+          </button>
+          <button class="btn-icon" style="justify-content: center;" onclick="loginAs('مطور GitHub')">
+            <span style="color: #8b5cf6;">Git</span> حساب GitHub
+          </button>
+        </div>
+
+        <div style="text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 6px;">أو بالبريد الإلكتروني:</div>
+        <input type="email" id="emailInput" class="quick-input" placeholder="name@example.com" style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--bg-input);" />
+        <button class="btn-send" style="justify-content: center;" onclick="loginWithEmail()">
+          دخول الحساب
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 3. نافذة تفاصيل البطاقات الأربع ================= -->
+  <div class="modal-overlay" id="infoModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="infoModalTitle">تفاصيل الخدمة</h3>
+        <button class="close-btn" onclick="closeModal('infoModal')">إغلاق</button>
+      </div>
+      <div id="infoModalBody"></div>
+    </div>
+  </div>
+
+  <!-- ================= 4. نافذة كود FastAPI وقاعدة البيانات ================= -->
+  <div class="modal-overlay" id="fastapiModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🗄️ خادم FastAPI وقاعدة بيانات SQLite</h3>
+        <button class="close-btn" onclick="closeModal('fastapiModal')">إغلاق</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">
+        هذا الكود متوافق مع مستودع <code>Suggested-Workflows</code> ويحتوي على مسارات المحادثة وقاعدة البيانات:
+      </p>
+      <pre class="code-box">from fastapi import FastAPI, Depends
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+app = FastAPI(title="موجة البيان API")
+Base = declarative_base()
+
+class ChatLog(Base):
+    __tablename__ = "chats"
+    id = Column(Integer, primary_key=True)
+    query = Column(String)
+    response = Column(String)
+
+@app.post("/api/chat")
+async def chat(query: str):
+    return {"reply": "تم استلام السؤال ومعالجته بنجاح"}</pre>
+      <button class="btn-send" style="width: 100%; justify-content: center;" onclick="alert('تم نسخ الكود!');">نسخ كود بايثون</button>
+    </div>
+  </div>
+
+  <!-- ================= البرمجة التفاعلية بالكامل (JavaScript) ================= -->
   <script>
     const $ = id => document.getElementById(id);
-    const msgs = $('msgs');
 
-    /* محتوى البطاقات الأربع التفاعلية */
-    const cardData = {
+    /* 1. بيانات البطاقات الأربع */
+    const SERVICES = {
       models: {
-        title: '✨ النماذج المتوفرة وأحدث الإصدارات',
-        body: `
-          <p style="font-size: 13.5px; line-height: 1.8; color: #cbd5e1; margin-bottom: 12px;">
-            • <strong>Gemini 3.8 Flash:</strong> فائق السرعة والاقتصاد، زمن استجابة قياسي بسياق 1,000,000 رمز.<br>
-            • <strong>Gemini 3.1 Pro:</strong> الأقوى في التفكير المنطقي والهندسة البرمجية بسياق 2,000,000 رمز.<br>
-            • <strong>Gemini 3.1 Flash-Lite:</strong> الخيار الاقتصادي للمهام الضخمة المتكررة.<br>
-            • <strong>DeepSeek V3 / R1:</strong> نماذج مفتوحة الأوزان بمعمارية خليط الخبراء (MoE).
+        id: 'models',
+        title: 'النماذج المتوفرة',
+        desc: 'تعرف على أحدث إصدارات Gemini و DeepSeek ومقارنتها',
+        icon: '✨',
+        details: `
+          <p style="font-size: 13px; line-height: 1.8;">
+            • <strong>Gemini 3.8 Flash:</strong> فائق السرعة والاقتصاد ومثالي للدردشة التفاعلية.<br>
+            • <strong>Gemini 3.1 Pro:</strong> الأقوى بالاستدلال البرمجي والمهام المعقدة.<br>
+            • <strong>DeepSeek V3 / R1:</strong> نماذج مفتوحة المصدر عالية الكفاءة.
           </p>
-          <button class="btn-submit" onclick="askAiFromModal('قارن بين أحدث نماذج Gemini و DeepSeek')">اسأل المستشار عن النماذج</button>
         `
       },
       python: {
-        title: '🐍 البدء مع Python و SDK الرسمي',
-        body: `
-          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">تثبيت المكتبة الحديثة واستدعاء النموذج:</p>
-          <pre style="direction: ltr; text-align: left; background: #090c14; padding: 12px; border-radius: 12px; font-family: monospace; font-size: 12px; color: #a5b4fc;"># pip install google-genai
-from google import genai
-import os
-
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-response = client.models.generate_content(
+        id: 'python',
+        title: 'البدء مع Python',
+        desc: 'مثال عملي لاستدعاء Gemini عبر مكتبة google-genai',
+        icon: '🐍',
+        details: `
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">كود الاستدعاء الرسمي:</p>
+          <pre class="code-box">from google import genai
+client = genai.Client()
+res = client.models.generate_content(
     model="gemini-3.8-flash",
-    contents="اكتب دالة بايثون لحساب متتالية فيبوناتشي",
+    contents="مرحبا"
 )
-print(response.text)</pre>
-          <button class="btn-submit" style="margin-top: 12px;" onclick="askAiFromModal('أعطني مثال عملي بالبث المباشر Streaming في بايثون')">طلب كود Streaming</button>
+print(res.text)</pre>
         `
       },
-      flash: {
-        title: '⚡ مقارنة شاملة: Flash مقابل Pro',
-        body: `
-          <p style="font-size: 13.5px; line-height: 1.8; color: #cbd5e1; margin-bottom: 12px;">
-            • <strong>السرعة:</strong> Flash يستجيب في 0.3 إلى 0.6 ثانية مقارنة بـ 1.5 - 3 ثوانٍ لـ Pro.<br>
-            • <strong>التكلفة:</strong> Flash أوفر بنسبة 92% وهو الخيار الأنسب لـ 85% من التطبيقات.<br>
-            • <strong>التعقيد:</strong> يتفوق Pro في المهام الحسابية، كتابة الأكواد الكبيرة، واستخراج البيانات الدقيقة.<br>
-            • <strong>التوجيه الذكي:</strong> ينصح باستقبال الطلبات بـ Flash وتحويل المهام الصعبة فقط إلى Pro.
+      comparison: {
+        id: 'comparison',
+        title: 'Flash vs Pro',
+        desc: 'مقارنة شاملة بين السرعة والتكلفة ودقة الاستدلال',
+        icon: '⚡',
+        details: `
+          <p style="font-size: 13px; line-height: 1.8;">
+            • <strong>Flash:</strong> زمن استجابة 0.4 ثانية، تكلفة أقل بـ 90%، رائع لخدمة العملاء.<br>
+            • <strong>Pro:</strong> استدلال عميق، كتابة كود تفصيلي، سياق يصل لـ 2M رمز.
           </p>
-          <button class="btn-submit" onclick="askAiFromModal('كيف أطبق التوجيه الذكي Model Routing بين Flash و Pro؟')">شرح معمارية Model Routing</button>
         `
       },
-      limits: {
-        title: '📊 الحدود والأسعار وحصص الاستخدام',
-        body: `
-          <p style="font-size: 13.5px; line-height: 1.8; color: #cbd5e1; margin-bottom: 12px;">
-            • <strong>الخطة المجانية في AI Studio:</strong> حتى 15 طلب/دقيقة و 1,500 طلب يومياً مجاناً.<br>
-            • <strong>Gemini 3.8 Flash:</strong> $0.10 لكل مليون رمز إدخال و $0.40 لكل مليون رمز إخراج.<br>
-            • <strong>Gemini 3.1 Pro:</strong> $1.25 لكل مليون رمز إدخال.<br>
-            • <strong>ميزة Context Caching:</strong> تخفيض حتى 75% من تكلفة المدخلات الطويلة المتكررة.
+      pricing: {
+        id: 'pricing',
+        title: 'الحدود والأسعار',
+        desc: 'تفاصيل الحصص المجانية والاشتراكات للرموز (Tokens)',
+        icon: '📊',
+        details: `
+          <p style="font-size: 13px; line-height: 1.8;">
+            • <strong>الخطة المجانية:</strong> 15 طلب في الدقيقة و 1,500 طلب يومياً مجاناً.<br>
+            • <strong>Gemini 3.8 Flash:</strong> $0.10 لكل مليون رمز إدخال.<br>
+            • <strong>Context Caching:</strong> خصم 75% من تكلفة السياق المكرر.
           </p>
-          <button class="btn-submit" onclick="askAiFromModal('كيف أستفيد من ميزة Context Caching لتقليل الفاتورة؟')">استفسار عن التخفيضات</button>
         `
       }
     };
 
-    /* فتح وإغلاق النوافذ المنبثقة للبطاقات */
-    function openInfoModal(key) {
-      const data = cardData[key];
-      if (!data) return;
-      $('modalContent').innerHTML = `
-        <div class="modal-hdr">
-          <h3>${data.title}</h3>
-          <button class="btn-close" onclick="$('modalOverlay').classList.remove('active')">إغلاق</button>
-        </div>
-        <div>${data.body}</div>
-      `;
-      $('modalOverlay').classList.add('active');
+    /* حالة الترتيب والتثبيت في لوحة التحكم الشخصية */
+    let cardOrder = JSON.parse(localStorage.getItem('bayan_order')) || ['models', 'python', 'comparison', 'pricing'];
+    let pinnedCards = JSON.parse(localStorage.getItem('bayan_pinned')) || ['models'];
+
+    /* 2. رندرة البطاقات في الواجهة الرئيسية */
+    function renderCards() {
+      const container = $('cardsContainer');
+      container.innerHTML = '';
+
+      // فرز: المثبت أولاً، ثم حسب ترتيب المستخدم
+      const sorted = [...cardOrder].sort((a, b) => {
+        const aPin = pinnedCards.includes(a);
+        const bPin = pinnedCards.includes(b);
+        if (aPin && !bPin) return -1;
+        if (!aPin && bPin) return 1;
+        return 0;
+      });
+
+      sorted.forEach(id => {
+        const item = SERVICES[id];
+        if (!item) return;
+        const isPinned = pinnedCards.includes(id);
+
+        const card = document.createElement('div');
+        card.className = 'service-card ' + (isPinned ? 'is-pinned' : '');
+        card.onclick = () => showServiceDetails(id);
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="card-ic">${item.icon}</span>
+            ${isPinned ? '<span class="pin-badge">📌 مثبتة</span>' : ''}
+          </div>
+          <div>
+            <span class="card-title">${item.title}</span>
+            <span class="card-desc">${item.desc}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      renderDashboardList();
     }
 
-    function closeInfoModal(e) {
-      if (e.target === $('modalOverlay')) {
-        $('modalOverlay').classList.remove('active');
+    /* 3. رندرة قائمة لوحة التحكم الشخصية */
+    function renderDashboardList() {
+      const list = $('dashboardCardsList');
+      list.innerHTML = '';
+
+      cardOrder.forEach((id, index) => {
+        const item = SERVICES[id];
+        const isPinned = pinnedCards.includes(id);
+
+        const row = document.createElement('div');
+        row.className = 'dash-row';
+        row.innerHTML = `
+          <div style="font-weight: 700; font-size: 13px;">
+            ${item.icon} ${item.title}
+          </div>
+          <div class="dash-actions">
+            <button class="dash-btn ${isPinned ? 'active' : ''}" onclick="togglePinCard('${id}')">
+              ${isPinned ? '📌 مثبتة' : 'تثبيت'}
+            </button>
+            <button class="dash-btn" ${index === 0 ? 'disabled' : ''} onclick="moveCard(${index}, -1)">⬆</button>
+            <button class="dash-btn" ${index === cardOrder.length - 1 ? 'disabled' : ''} onclick="moveCard(${index}, 1)">⬇</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function togglePinCard(id) {
+      if (pinnedCards.includes(id)) {
+        pinnedCards = pinnedCards.filter(p => p !== id);
+      } else {
+        pinnedCards.push(id);
       }
+      localStorage.setItem('bayan_pinned', JSON.stringify(pinnedCards));
+      renderCards();
     }
 
-    /* 1. تجربة زر الإرسال مع محاكاة التحميل 3 ثوانٍ */
-    function handleQuickSubmit(e) {
+    function moveCard(index, dir) {
+      const target = index + dir;
+      if (target < 0 || target >= cardOrder.length) return;
+      const temp = cardOrder[index];
+      cardOrder[index] = cardOrder[target];
+      cardOrder[target] = temp;
+      localStorage.setItem('bayan_order', JSON.stringify(cardOrder));
+      renderCards();
+    }
+
+    function resetCardsDefault() {
+      cardOrder = ['models', 'python', 'comparison', 'pricing'];
+      pinnedCards = ['models'];
+      localStorage.removeItem('bayan_order');
+      localStorage.removeItem('bayan_pinned');
+      renderCards();
+    }
+
+    /* 4. محاكاة زر الإرسال والتحميل لمدة 3 ثوانٍ */
+    function handleSimulatedSubmit(e) {
       e.preventDefault();
-      const input = $('quickInput');
-      const val = input.value.trim();
+      const val = $('promptInput').value.trim();
       if (!val) return;
 
-      const btn = $('quickBtn');
-      const btnText = $('quickBtnText');
-      const spinner = $('quickSpinner');
-      const alertBox = $('successAlert');
+      const btn = $('submitBtn');
+      const btnText = $('submitBtnText');
+      const spinner = $('submitSpinner');
+      const notice = $('successNotice');
 
-      // تفعيل حالة الدوران
       btn.disabled = true;
       btnText.textContent = 'جاري التحميل...';
       spinner.style.display = 'block';
-      alertBox.classList.remove('show');
+      notice.classList.remove('show');
 
-      // محاكاة عملية التحميل لـ 3 ثوانٍ (3000ms)
+      // محاكاة 3 ثوانٍ بالتمام (3000ms)
       setTimeout(() => {
         spinner.style.display = 'none';
         btnText.textContent = 'تم الإرسال';
         btn.disabled = false;
-        alertBox.classList.add('show');
+        notice.classList.add('show');
 
-        // بعد ظهور رسالة النجاح، فتح شاشة المحادثة بالاستفسار
+        // فتح الشات بعد اكتمال التحميل
         setTimeout(() => {
-          openChat();
-          sendQueryToBackend(val);
-          input.value = '';
+          openChatView();
+          addChatMsg(val, 'me');
+          sendToFastApi(val);
+          $('promptInput').value = '';
           btnText.textContent = 'إرسال';
         }, 1200);
       }, 3000);
     }
 
-    /* الانتقال إلى شاشة المحادثة */
-    function openChat() {
-      $('home').classList.add('hidden');
-      $('chat').classList.remove('hidden');
-      if (msgs.children.length === 0) {
-        addMessage('أهلاً بك في منصة موجة البيان للدعم الفني للذكاء الاصطناعي! 👋\nأنا جاهز للإجابة على استفساراتك البرمجية حول Gemini و DeepSeek.', 'bot');
+    /* 5. الاتصال بـ FastAPI /api/chat مع رد احتياطي */
+    async function sendToFastApi(q) {
+      const botWaiting = addChatMsg('جاري استخراج الرد من نماذج الذكاء الاصطناعي...', 'bot');
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          botWaiting.textContent = data.answer || data.reply || JSON.stringify(data);
+        } else {
+          botWaiting.textContent = getOfflineReply(q);
+        }
+      } catch (err) {
+        botWaiting.textContent = getOfflineReply(q);
       }
     }
 
-    function closeChat() {
-      $('chat').classList.add('hidden');
-      $('home').classList.remove('hidden');
+    function getOfflineReply(q) {
+      q = q.toLowerCase();
+      if (q.includes('بايثون') || q.includes('python')) {
+        return "للربط مع بايثون:\n1. pip install google-genai\n2. استخدم نموذج gemini-3.8-flash لتوليد أسرع ردود.";
+      }
+      if (q.includes('سعر') || q.includes('أسعار') || q.includes('حدود')) {
+        return "الخطة المجانية في AI Studio توفر 15 طلب بالدقيقة مجاناً. سعر Flash التجاري $0.10 لكل 1M رمز إدخال.";
+      }
+      return "تم استلام سؤالك في منصة موجة البيان. يمكنك تشغيل خادم FastAPI عبر uvicorn للربط الحي.";
     }
 
-    function askAiFromModal(promptText) {
-      $('modalOverlay').classList.remove('active');
-      openChat();
-      sendQueryToBackend(promptText);
-    }
-
-    /* إضافة فقاعة محادثة */
-    function addMessage(text, role, code) {
+    function addChatMsg(text, type) {
       const d = document.createElement('div');
-      d.className = 'm ' + role;
+      d.className = 'msg ' + type;
       d.textContent = text;
-      if (code) {
-        const c = document.createElement('pre');
-        c.textContent = code;
-        d.appendChild(c);
-      }
-      msgs.appendChild(d);
-      msgs.scrollTop = msgs.scrollHeight;
+      $('chatMsgs').appendChild(d);
+      $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
       return d;
     }
 
-    /* 2. إرسال المحادثة والربط بـ FastAPI backend (/api/chat) */
-    async function sendQueryToBackend(queryText) {
-      addMessage(queryText, 'me');
-      const waiting = addMessage('جاري التفكير وصياغة الحل…', 'bot');
-
-      try {
-        // استدعاء endpoint خادم FastAPI في main.py
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: queryText })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          waiting.textContent = data.answer || data.response || JSON.stringify(data);
-        } else {
-          // استجابة ذكية احتياطية
-          waiting.textContent = getOfflineFallback(queryText);
-        }
-      } catch (err) {
-        // استجابة احتياطية في حال العمل كملف محلي
-        waiting.textContent = getOfflineFallback(queryText);
-      }
-      msgs.scrollTop = msgs.scrollHeight;
-    }
-
-    function handleChatSubmit(e) {
+    function handleChatQuery(e) {
       e.preventDefault();
       const input = $('chatInput');
       const val = input.value.trim();
       if (!val) return;
       input.value = '';
-      sendQueryToBackend(val);
+      addChatMsg(val, 'me');
+      sendToFastApi(val);
     }
 
-    /* الردود الذكية الاحتياطية */
-    function getOfflineFallback(query) {
-      const q = query.toLowerCase();
-      if (q.includes('python') || q.includes('بايثون') || q.includes('كود')) {
-        return "للربط مع بايثون:\n1. ثبّت المكتبة: pip install google-genai\n2. استخدم النموذج: gemini-3.8-flash\n3. للـ Streaming استخدم client.models.generate_content_stream";
-      }
-      if (q.includes('flash') || q.includes('pro') || q.includes('فرق')) {
-        return "المقارنة الميدانية:\n• Flash: سريع جداً (0.4s) واقتصادي، ممتاز لخدمات العملاء والشات.\n• Pro: مخصص للاستدلال العميق وحل البرمجيات المعقدة.";
-      }
-      if (q.includes('سعر') || q.includes('حدود') || q.includes('مجاني')) {
-        return "الخطة المجانية في Google AI Studio توفر 15 طلب/دقيقة و 1,500 طلب يومياً. سعر Flash التجاري $0.10 لكل 1M رمز إدخال.";
-      }
-      return "تم استلام سؤالك في منصة موجة البيان. للربط المباشر تأكد من تشغيل خادم FastAPI عبر uvicorn وضبط مفتاح GEMINI_API_KEY.";
+    /* 6. تبديل الوضع الليلي والنهاري */
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      $('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('bayan_theme', next);
     }
+
+    // استعادة السمة المحفوظة
+    const savedTheme = localStorage.getItem('bayan_theme');
+    if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      $('themeBtn').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+    }
+
+    /* 7. القوائم والنوافذ المنبثقة */
+    function toggleDropdown() {
+      $('dropdownMenu').classList.toggle('show');
+    }
+
+    function openModal(id) {
+      $(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+      $(id).classList.remove('active');
+    }
+
+    function showServiceDetails(id) {
+      const item = SERVICES[id];
+      $('infoModalTitle').textContent = item.icon + ' ' + item.title;
+      $('infoModalBody').innerHTML = item.details;
+      openModal('infoModal');
+    }
+
+    function loginAs(role) {
+      $('userNameLabel').textContent = role;
+      closeModal('authModal');
+      alert('مرحباً بك! تم تسجيل الدخول كـ ' + role);
+    }
+
+    function loginWithEmail() {
+      const email = $('emailInput').value.trim();
+      if (!email) return;
+      loginAs(email.split('@')[0]);
+    }
+
+    function openChatView() {
+      $('homeView').classList.add('hidden');
+      $('chatView').classList.remove('hidden');
+      if ($('chatMsgs').children.length === 0) {
+        addChatMsg('مرحباً بك في منصة موجة البيان! كيف أساعدك اليوم في نماذج Gemini و DeepSeek؟', 'bot');
+      }
+    }
+
+    function closeChatView() {
+      $('chatView').classList.add('hidden');
+      $('homeView').classList.remove('hidden');
+    }
+
+    // التشغيل المبدئي
+    renderCards();
   </script>
 </body>
 </html>
