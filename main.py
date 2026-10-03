@@ -22,7 +22,7 @@ app.add_middleware(
 )
 
 # ==========================================
-# إعداد الاتصال بقاعدة بيانات ChromaDB السحابية
+# استدعاء الإعدادات من سيرفر Render بأمان (بدون كتابة مفاتيح)
 # ==========================================
 chroma_url = os.environ.get("CHROMA_URL")
 chroma_api_key = os.environ.get("CHROMA_API_KEY")
@@ -31,7 +31,7 @@ chroma_tenant = os.environ.get("CHROMA_TENANT")
 chroma_client = None
 chroma_collection = None
 
-# التحقق من توفر المتغيرات للاتصال بسحابة ChromaDB
+# إنشاء الاتصال بالسحابة فقط في حال تم ضبط المتغيرات في Render
 if chroma_url and chroma_api_key:
     try:
         connect_kwargs = {
@@ -44,15 +44,15 @@ if chroma_url and chroma_api_key:
 
         chroma_client = chromadb.HttpClient(**connect_kwargs)
         chroma_collection = chroma_client.get_or_create_collection(name="tech_advisor_collection")
-        print(" تم الاتصال بـ ChromaDB Cloud بنجاح مع هوية المستأجر.")
+        print("تم الاتصال بـ ChromaDB Cloud بنجاح.")
     except Exception as e:
-        print(f" تعذر الاتصال بـ ChromaDB: {e}")
+        print(f"تعذر الاتصال بـ ChromaDB: {e}")
 
 # تهيئة محرك RAG الأصلي
 engine = GroundedRAGEngine()
 
 # ==========================================
-# نماذج الطلبات (Models)
+# نماذج البيانات (Models)
 # ==========================================
 class ChatRequest(BaseModel):
     message: Optional[str] = None
