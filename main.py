@@ -4,38 +4,34 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from google import genai
+import google.generativeai as genai
 from qdrant_client import QdrantClient
 
-# 1. قراءة المتغيرات البيئية
+# قراءة المتغيرات البيئية
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 QDRANT_URL = os.environ.get("QDRANT_URL")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 COLLECTION_NAME = "gemini_docs"
 
-# 2. تشغيل عملاء الاتصال (Gemini & Qdrant)
-genai_client = genai.Client(api_key=GEMINI_API_KEY)
+# إعداد Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+
+# إعداد Qdrant
 qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
-# 3. إعداد دورة حياة التطبيق (لتشغيل قاعدة البيانات تلقائياً)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         import ingest
         print("بدء تهيئة وفهرسة البيانات...")
         ingest.main()
-        print("اكتملت التهيئة بنجاح.")
     except Exception as e:
         print(f"تنبيه التهيئة: {e}")
     yield
 
-# 4. تهيئة تطبيق FastAPI
 app = FastAPI(title="Mowjh Al-Bayan API", lifespan=lifespan)
-
-# 5. إعداد مجلد القوالب (لعرض واجهات HTML)
 templates = Jinja2Templates(directory="templates")
 
-# 6. نماذج البيانات (Pydantic Models)
 class QueryRequest(BaseModel):
     question: str
 
@@ -43,41 +39,30 @@ class QueryResponse(BaseModel):
     answer: str
     sources: list[str]
 
-# 7. المسارات (Routes)
 @app.get("/")
 def health_check():
-    """مسار فحص حالة السيرفر"""
-    return {"status": "ok", "service": "Mowjh Al-Bayan API"}
+    return {"status": "ok"}
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    """مسار عرض واجهة تسجيل الدخول"""
     return templates.TemplateResponse("login.html", {"request": request})
 
 @app.post("/ask", response_model=QueryResponse)
 def ask_question(request: QueryRequest):
-    """مسار استقبال الأسئلة والرد عليها بالذكاء الاصطناعي"""
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="السؤال لا يمكن أن يكون فارغاً.")
 
-    # الخطوة أ: تحويل سؤال المستخدم إلى متجه رقمي
     try:
-        embed_response = genai_client.models.embed_content(
-            model="gemini-embedding-001",
-            contents=request.question
+        # استخدام Embedding
+        result = genai.embed_content(
+            model="models/text-embedding-004",
+            content=request.question,
+            task_type="retrieval_query"
         )
-        
-        # استخراج المتجه بشكل آمن
-        if hasattr(embed_response, 'embeddings') and embed_response.embeddings:
-            query_vector = embed_response.embeddings[0].values
-        else:
-            query_vector = embed_response.embedding.values
-            
+        query_vector = result['embedding']
     except Exception as e:
-        print(f"Embedding Error: {e}")
-        raise HTTPException(status_code=500, detail="حدث خطأ أثناء تحويل السؤال في نماذج Gemini.")
+        raise HTTPException(status_code=500, detail=f"خطأ في Embedding: {e}")
 
-    # الخطوة ب: البحث الدلالي في قاعدة بيانات Qdrant
     try:
         search_results = qdrant_client.search(
             collection_name=COLLECTION_NAME,
@@ -85,40 +70,24 @@ def ask_question(request: QueryRequest):
             limit=3,
         )
     except Exception as e:
-        print(f"Qdrant Search Error: {e}")
         raise HTTPException(status_code=500, detail="تعذر الاتصال بقاعدة بيانات Qdrant.")
 
     if not search_results:
-        return QueryResponse(
-            answer="لم يتم العثور على سياق مطابق في الوثائق.",
-            sources=[]
-        )
+        return QueryResponse(answer="لم يتم العثور على سياق مطابق.", sources=[])
 
-    # استخراج النصوص المسترجعة والمصادر
     context_chunks = [hit.payload.get("text", "") for hit in search_results]
     sources = list({hit.payload.get("source", "") for hit in search_results})
     full_context = "\n---\n".join(context_chunks)
 
-    # الخطوة ج: صياغة الرد الذكي باستخدام Gemini 2.5 Flash
-    prompt = f"""أنت المساعد التقني الذكي لمنصة Mowjh Al-Bayan. أجب عن سؤال المستخدم بدقة استناداً إلى السياق المرفق فقط.
-
-السياق المسترجع من الوثائق:
-{full_context}
-
-سؤال المستخدم:
-{request.question}
-"""
+    prompt = f"أجب بناءً على السياق فقط.\nالسياق:\n{full_context}\nالسؤال:\n{request.question}"
 
     try:
-        gen_response = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        gen_response = model.generate_content(prompt)
     except Exception as e:
-        print(f"Generation Error: {e}")
-        raise HTTPException(status_code=500, detail="حدث خطأ أثناء صياغة الإجابة.")
+        raise HTTPException(status_code=500, detail="خطأ أثناء صياغة الإجابة.")
 
     return QueryResponse(
-        answer=gen_response.text or "تعذر توليد رد.",
+        answer=gen_response.text,
         sources=sources
     )
