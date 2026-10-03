@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -142,6 +141,14 @@
             padding: 12px 18px;
             border-radius: 16px 16px 0 16px;
         }
+        
+        .msg-ai {
+            align-self: flex-end;
+            background-color: var(--bg-ai-msg);
+            padding: 12px 18px;
+            border-radius: 16px 16px 16px 0;
+            border: 1px solid #2d3748;
+        }
 
         .msg-ai-arbiter {
             align-self: flex-end;
@@ -172,16 +179,6 @@
             font-size: 0.9rem;
             color: var(--text-muted);
             line-height: 1.5;
-        }
-
-        .rag-badge {
-            display: inline-block;
-            background-color: #374151;
-            color: #d1d5db;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            margin-top: 10px;
         }
 
         .input-area {
@@ -257,12 +254,12 @@
             </p>
 
             <div class="cards-grid">
-                <div class="card" onclick="startChat('كيف أبدأ مع Python و Gemini؟')">
+                <div class="card" onclick="handleSend('كيف أبدأ مع Python و Gemini؟')">
                     <div style="font-size: 2rem; margin-bottom: 10px;">🐍</div>
                     <h3>البدء مع Python</h3>
                     <p style="font-size: 0.8rem; color: var(--text-muted);">أكواد الربط الرسمية</p>
                 </div>
-                <div class="card" onclick="startChat('قارن بين Flash و Pro')">
+                <div class="card" onclick="handleSend('قارن بين Flash و Pro')">
                     <div style="font-size: 2rem; margin-bottom: 10px;">⚡</div>
                     <h3>Flash vs Pro</h3>
                     <p style="font-size: 0.8rem; color: var(--text-muted);">السرعة مقابل الاستدلال</p>
@@ -271,11 +268,11 @@
 
             <div class="suggestions">
                 <h4 style="color: var(--text-muted); margin-bottom: 10px;">✨ اقتراحات الأسئلة الذكية</h4>
-                <button class="suggestion-btn" onclick="startChat('ما الفرق بين Gemini 3.8 Flash و DeepSeek V3؟')">
+                <button class="suggestion-btn" onclick="handleSend('ما الفرق بين Gemini 3.8 Flash و DeepSeek V3؟')">
                     <span>ما الفرق بين Gemini 3.8 Flash و DeepSeek V3؟</span>
                     <span>←</span>
                 </button>
-                <button class="suggestion-btn" onclick="startChat('اكتب لي كود بايثون لاسترجاع البيانات (RAG)')">
+                <button class="suggestion-btn" onclick="handleSend('اكتب لي كود بايثون لاسترجاع البيانات (RAG)')">
                     <span>اكتب لي كود بايثون لاسترجاع البيانات (RAG)</span>
                     <span>←</span>
                 </button>
@@ -298,21 +295,44 @@
         const chatView = document.getElementById('chat-view');
         const userInput = document.getElementById('userInput');
 
-        function startChat(query) {
-            homeView.style.display = 'none';
-            chatView.style.display = 'flex';
-            addMessage(query, 'user');
-            
-            setTimeout(() => {
-                addArbiterResponse(query);
-            }, 800);
+        function initChatUI() {
+            if (homeView.style.display !== 'none') {
+                homeView.style.display = 'none';
+                chatView.style.display = 'flex';
+            }
         }
 
-        function handleSend() {
-            const text = userInput.value.trim();
-            if (text) {
-                startChat(text);
-                userInput.value = '';
+        async function handleSend(query = null) {
+            const text = query || userInput.value.trim();
+            if (!text) return;
+
+            initChatUI();
+            addMessage(text, 'user');
+            userInput.value = '';
+
+            const loadingId = "loading-" + Date.now();
+            addLoadingMessage(loadingId);
+
+            try {
+                // ⚠️ ضع رابط الـ API الفعلي الخاص بك هنا بدلاً من الرابط الوهمي
+                const response = await fetch('https://sua-32b8.onrender.com/api/chat', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: text }) 
+                });
+
+                const data = await response.json();
+                
+                document.getElementById(loadingId).remove();
+                
+                // نعرض الرد الحقيقي القادم من الخادم
+                addDynamicResponse(data.text || data.response, data.model || 'Gemini/DeepSeek'); 
+
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                addMessage("عذراً، حدث خطأ في الاتصال بالخادم. تأكد من أن الرابط يعمل.", 'ai');
             }
         }
 
@@ -322,35 +342,39 @@
 
         function addMessage(text, sender) {
             const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${sender === 'user' ? 'msg-user' : ''}`;
-            if (sender === 'user') {
-                msgDiv.textContent = text;
-            }
+            msgDiv.className = `message ${sender === 'user' ? 'msg-user' : 'msg-ai'}`;
+            msgDiv.textContent = text;
             chatView.appendChild(msgDiv);
             scrollToBottom();
         }
 
-        function addArbiterResponse(query) {
+        function addDynamicResponse(aiText, modelName) {
             const arbiterDiv = document.createElement('div');
             arbiterDiv.className = 'message msg-ai-arbiter';
             
+            // تحويل النص إلى HTML ليتم قراءة الأسطر الجديدة بشكل سليم
+            const formattedText = aiText.replace(/\n/g, '<br>');
+            
             arbiterDiv.innerHTML = `
                 <div class="arbiter-header">
-                    <div style="display: flex; gap: 10px;">
-                        <span style="background: #1e3a8a; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem;">DeepSeek</span>
-                        <span style="background: #4c1d95; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem;">Gemini</span>
-                    </div>
-                    <div class="winner-badge">🏆 النموذج الأفضل المقترح: DeepSeek V3</div>
+                    <div class="winner-badge">🤖 رد النموذج: ${modelName}</div>
                 </div>
                 <div class="model-details">
-                    <p>بناءً على تحكيم منصة موجة البيان، النموذج الأفضل لتطبيقات النماذج المفتوحة المعمارية هو <strong>DeepSeek V3</strong> لأنه يعطي استدلالاً كودياً عميقاً.</p>
-                    <br>
-                    <p>بينما <strong>Gemini 3.8 Flash</strong> هو الخيار الموصى به للتطبيقات اليومية بفضل زمن استجابته الفوري (0.4 ثانية).</p>
-                    <div class="rag-badge">🧠 ذاكرة RAG المسترجعة: وثائق نماذج Google و DeepSeek</div>
+                    <p>${formattedText}</p>
                 </div>
             `;
             
             chatView.appendChild(arbiterDiv);
+            scrollToBottom();
+        }
+
+        function addLoadingMessage(id) {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = id;
+            loadingDiv.className = 'message msg-ai';
+            loadingDiv.textContent = 'جاري التفكير...';
+            loadingDiv.style.opacity = '0.7';
+            chatView.appendChild(loadingDiv);
             scrollToBottom();
         }
 
