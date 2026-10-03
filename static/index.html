@@ -2,21 +2,24 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>منصة موجة البيان | الدعم الفني لنماذج الذكاء الاصطناعي</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #07090e;
-      --card-bg: rgba(17, 24, 39, 0.85);
-      --card-hover: rgba(30, 41, 59, 0.95);
+      --card-bg: rgba(17, 24, 39, 0.9);
+      --card-hover: rgba(30, 41, 59, 0.98);
       --primary: #6366f1;
-      --primary-glow: rgba(99, 102, 241, 0.35);
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.4);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --border-color: rgba(51, 65, 85, 0.6);
+      --gemini-color: #6366f1;
+      --deepseek-color: #0ea5e9;
     }
     * {
       box-sizing: border-box;
@@ -32,30 +35,60 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 16px;
+      padding: 12px;
       overflow-x: hidden;
     }
     .app-viewport {
       width: 100%;
-      max-width: 412px;
+      max-width: 420px;
+      height: 94vh;
+      max-height: 880px;
       background: #090d16;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 40px;
       box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px -10px var(--primary-glow);
       overflow: hidden;
       display: flex;
       flex-direction: column;
       position: relative;
     }
+    .screen-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      position: absolute;
+      inset: 0;
+      background: #090d16;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+      overflow: hidden;
+    }
+    .screen-view.hidden-left {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .screen-view.hidden-right {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .screen-view.active {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 10;
+    }
     .status-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 24px 6px;
+      padding: 12px 22px 6px;
       font-size: 13px;
       font-weight: 700;
       color: #e2e8f0;
       user-select: none;
+      flex-shrink: 0;
     }
     .status-left {
       display: flex;
@@ -88,8 +121,16 @@
       background: #e2e8f0;
       border-radius: 1px;
     }
+    .home-scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
     .hero-section {
-      padding: 24px 20px 16px;
+      padding: 16px 20px 10px;
       text-align: center;
       display: flex;
       flex-direction: column;
@@ -97,90 +138,91 @@
     }
     .wave-badge-container {
       position: relative;
-      width: 96px;
-      height: 96px;
-      margin-bottom: 22px;
+      width: 84px;
+      height: 84px;
+      margin-bottom: 16px;
+      cursor: pointer;
     }
     .wave-glow {
       position: absolute;
       inset: -6px;
       background: radial-gradient(circle, #6366f1 0%, #a855f7 50%, transparent 75%);
       filter: blur(14px);
-      opacity: 0.75;
-      border-radius: 32px;
+      opacity: 0.8;
+      border-radius: 28px;
     }
     .wave-badge {
       position: relative;
       width: 100%;
       height: 100%;
       background: linear-gradient(145deg, #7c3aed, #4f46e5);
-      border-radius: 28px;
-      padding: 14px;
+      border-radius: 26px;
+      padding: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
     }
     .app-title {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 900;
       background: linear-gradient(135deg, #60a5fa 10%, #a5b4fc 60%, #c084fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       letter-spacing: -0.5px;
     }
     .app-description {
-      font-size: 13.5px;
-      line-height: 1.65;
+      font-size: 12.5px;
+      line-height: 1.6;
       color: #94a3b8;
-      max-width: 340px;
-      margin-bottom: 24px;
+      max-width: 330px;
+      margin-bottom: 16px;
     }
     .cards-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      padding: 0 16px 16px;
+      gap: 10px;
+      padding: 0 16px 14px;
     }
     .action-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 15px 14px;
+      border-radius: 18px;
+      padding: 13px 12px;
       text-align: right;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 132px;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      height: 124px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
+      user-select: none;
     }
     .action-card:hover {
       background: var(--card-hover);
       border-color: rgba(99, 102, 241, 0.5);
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
     }
     .card-icon {
-      font-size: 24px;
-      margin-bottom: 8px;
+      font-size: 22px;
+      margin-bottom: 6px;
     }
     .card-title {
-      font-size: 14.5px;
+      font-size: 13.5px;
       font-weight: 700;
       color: #f1f5f9;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     .card-subtitle {
-      font-size: 11px;
+      font-size: 10.5px;
       color: #94a3b8;
-      line-height: 1.45;
+      line-height: 1.4;
     }
-    /* Smart Question Suggestions */
     .smart-suggestions-wrap {
       padding: 0 16px 10px;
     }
@@ -189,13 +231,13 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
-      padding: 0 4px;
+      padding: 0 2px;
     }
     .suggestions-title {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 5px;
+      font-size: 11.5px;
       font-weight: 700;
       color: #cbd5e1;
     }
@@ -203,7 +245,7 @@
       display: flex;
       background: rgba(15, 23, 42, 0.9);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 2px;
       gap: 2px;
     }
@@ -211,28 +253,28 @@
       background: transparent;
       border: none;
       color: #94a3b8;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 8px;
+      padding: 3px 8px;
+      border-radius: 7px;
       cursor: pointer;
       transition: all 0.2s;
     }
     .tab-btn.active {
       background: var(--primary);
       color: #ffffff;
-      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+      box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
     }
     .suggestions-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
     .suggestion-chip {
       background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(51, 65, 85, 0.7);
       border-radius: 12px;
-      padding: 8px 12px;
+      padding: 7px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -248,17 +290,17 @@
     .chip-main {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       flex: 1;
       min-width: 0;
     }
     .chip-num {
-      width: 18px;
-      height: 18px;
-      border-radius: 6px;
+      width: 17px;
+      height: 17px;
+      border-radius: 5px;
       background: rgba(30, 41, 59, 0.8);
       color: #94a3b8;
-      font-size: 10px;
+      font-size: 9.5px;
       font-family: 'JetBrains Mono', monospace;
       display: flex;
       align-items: center;
@@ -266,7 +308,7 @@
       flex-shrink: 0;
     }
     .chip-text {
-      font-size: 11.5px;
+      font-size: 11px;
       color: #e2e8f0;
       font-weight: 500;
       white-space: nowrap;
@@ -276,38 +318,32 @@
     .chip-meta {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       flex-shrink: 0;
       margin-right: 6px;
     }
     .chip-tag {
-      font-size: 9.5px;
-      padding: 2px 6px;
-      border-radius: 6px;
+      font-size: 9px;
+      padding: 2px 5px;
+      border-radius: 5px;
       background: rgba(30, 41, 59, 0.9);
       color: #94a3b8;
       font-family: 'JetBrains Mono', monospace;
     }
     .chip-arrow {
-      font-size: 12px;
+      font-size: 11px;
       color: #64748b;
-      transition: color 0.2s, transform 0.2s;
     }
-    .suggestion-chip:hover .chip-arrow {
-      color: var(--primary);
-      transform: translateX(-2px);
-    }
-    /* Input prompt bar */
     .prompt-bar-wrap {
-      padding: 0 16px 16px;
+      padding: 0 16px 12px;
     }
     .prompt-bar {
       display: flex;
       align-items: center;
-      background: rgba(15, 23, 42, 0.9);
+      background: rgba(15, 23, 42, 0.95);
       border: 1px solid var(--border-color);
-      border-radius: 18px;
-      padding: 8px 12px;
+      border-radius: 16px;
+      padding: 6px 10px;
       gap: 8px;
     }
     .prompt-input {
@@ -315,8 +351,9 @@
       background: transparent;
       border: none;
       color: white;
-      font-size: 12.5px;
+      font-size: 12px;
       outline: none;
+      text-align: right;
     }
     .prompt-input::placeholder {
       color: #64748b;
@@ -327,90 +364,340 @@
       color: white;
       width: 32px;
       height: 32px;
-      border-radius: 12px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       transition: background 0.2s;
+      flex-shrink: 0;
     }
     .prompt-btn:hover {
-      background: #4f46e5;
+      background: var(--primary-hover);
     }
-    /* Footer */
+    .chat-toggle-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-color);
+      color: #94a3b8;
+      border-radius: 10px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+    }
     .app-footer {
       text-align: center;
-      padding: 12px 16px 24px;
-      font-size: 11px;
+      padding: 8px 16px 14px;
+      font-size: 10.5px;
       color: #64748b;
       border-top: 1px solid rgba(255, 255, 255, 0.04);
+      flex-shrink: 0;
     }
-    /* Interactive Modal */
-    .modal-backdrop {
+
+    /* ================= CHAT SCREEN ================= */
+    .chat-screen-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #0d121f;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+    .chat-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: right;
+    }
+    .chat-back-btn {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .chat-back-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+    .chat-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chat-subtitle {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .arbiter-badge {
+      font-size: 9px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .chat-messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: #070a12;
+    }
+    .msg-wrap {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .msg-wrap.user {
+      flex-direction: row-reverse;
+    }
+    .msg-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .msg-wrap.user .msg-avatar {
+      background: var(--primary);
+      color: white;
+    }
+    .msg-wrap.assistant .msg-avatar {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      color: white;
+    }
+    .msg-bubble {
+      max-width: 86%;
+      padding: 12px 14px;
+      border-radius: 16px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      position: relative;
+    }
+    .msg-wrap.user .msg-bubble {
+      background: var(--primary);
+      color: white;
+      border-top-right-radius: 4px;
+    }
+    .msg-wrap.assistant .msg-bubble {
+      background: #111726;
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      color: #e2e8f0;
+      border-top-left-radius: 4px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+    .arbiter-card {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 12px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+    .arbiter-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: #818cf8;
+      margin-bottom: 4px;
+    }
+    .arbiter-reason {
+      color: #94a3b8;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .rag-tag {
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 9.5px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .rag-tag strong {
+      color: #a5b4fc;
+    }
+    .perspective-tabs {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 8px;
+      padding: 2px;
+    }
+    .perspective-btn {
+      flex: 1;
+      padding: 3px 6px;
+      font-size: 10px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .perspective-btn.active {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    .perspective-content {
+      font-size: 11.5px;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 8px 10px;
+      border-radius: 8px;
+      border-right: 2px solid var(--primary);
+      margin-bottom: 8px;
+      display: none;
+    }
+    .perspective-content.active {
+      display: block;
+    }
+    .msg-bubble pre {
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 0;
+      overflow-x: auto;
+      text-align: left;
+      direction: ltr;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #93c5fd;
+    }
+    .msg-bubble code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: #a5b4fc;
+    }
+    .msg-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 9.5px;
+      color: #64748b;
+    }
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 10px;
+    }
+    .copy-btn:hover {
+      color: white;
+    }
+    .chat-input-bar {
+      padding: 10px 14px 14px;
+      background: #0d121f;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .chat-quick-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .chat-chip {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 10.5px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .chat-chip:hover {
+      background: #334155;
+      color: white;
+    }
+    .info-modal {
       display: none;
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
       z-index: 50;
       flex-direction: column;
       justify-content: flex-end;
-      border-radius: 44px;
-      overflow: hidden;
     }
-    .modal-backdrop.active {
+    .info-modal.active {
       display: flex;
     }
-    .modal-content {
-      background: #0f1422;
+    .info-modal-card {
+      background: #0f1524;
       border-top: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 28px 28px 0 0;
       padding: 20px;
-      max-height: 85%;
+      max-height: 80%;
       overflow-y: auto;
       text-align: right;
     }
-    .modal-header {
+    .info-modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
-      padding-bottom: 10px;
+      margin-bottom: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
     }
-    .close-btn {
+    .info-modal-close {
       background: #1e293b;
       border: none;
-      color: #94a3b8;
-      padding: 4px 10px;
+      color: #cbd5e1;
+      width: 28px;
+      height: 28px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 12px;
-    }
-    pre code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      display: block;
-      background: #07090e;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid #1e293b;
-      overflow-x: auto;
-      color: #a5b4fc;
-      margin: 10px 0;
-      text-align: left;
-      direction: ltr;
     }
   </style>
 </head>
 <body>
 
-  <!-- App Viewport -->
   <main class="app-viewport">
-    
-    <!-- Status Bar -->
+
+    <!-- Top Status Bar -->
     <header class="status-bar">
-      <div class="status-right" id="clock-display">٤:١٤</div>
+      <div id="status-clock">٤:١٤</div>
       <div class="status-left">
         <div class="battery"><div class="battery-level"></div></div>
         <span style="font-size: 10px;">70%</span>
@@ -419,171 +706,269 @@
       </div>
     </header>
 
-    <!-- Hero Content -->
-    <section class="hero-section">
-      <div class="wave-badge-container">
-        <div class="wave-glow"></div>
-        <div class="wave-badge">
-          <svg viewBox="0 0 100 100" fill="none" style="width: 100%; height: 100%;">
-            <path d="M10 80C30 76 45 70 60 72C78 74 90 82 100 80V95H10V80Z" fill="#1e3a8a" opacity="0.8"/>
-            <path d="M12 85C28 83 48 78 64 80C82 82 92 88 100 86V95H12V85Z" fill="#2563eb"/>
-            <path d="M15 90C15 90 22 75 32 62C40 50 48 40 58 34C68 28 78 30 82 38C85 43 80 50 72 52C64 54 56 49 52 42" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M10 92C16 80 26 64 38 50C50 36 64 30 76 34C82 36 82 42 74 46C62 50 50 60 44 70C38 80 34 90 30 95H10Z" fill="#1d4ed8"/>
-            <circle cx="68" cy="34" r="2.5" fill="#ffffff"/>
-            <circle cx="58" cy="40" r="2" fill="#ffffff"/>
-            <circle cx="48" cy="48" r="2" fill="#ffffff"/>
-          </svg>
+    <!-- SCREEN 1: HOME VIEW -->
+    <div id="screen-home" class="screen-view active">
+      <div class="home-scroll-area">
+        
+        <section class="hero-section">
+          <div class="wave-badge-container" onclick="openChatScreen('أهلاً بك! كيف يمكنني مساعدتك برمجياً اليوم؟')">
+            <div class="wave-glow"></div>
+            <div class="wave-badge">
+              <svg viewBox="0 0 100 100" fill="none" style="width: 100%; height: 100%;">
+                <path d="M10 80C30 76 45 70 60 72C78 74 90 82 100 80V95H10V80Z" fill="#1e3a8a" opacity="0.8"/>
+                <path d="M12 85C28 83 48 78 64 80C82 82 92 88 100 86V95H12V85Z" fill="#2563eb"/>
+                <path d="M15 90C15 90 22 75 32 62C40 50 48 40 58 34C68 28 78 30 82 38C85 43 80 50 72 52C64 54 56 49 52 42" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M10 92C16 80 26 64 38 50C50 36 64 30 76 34C82 36 82 42 74 46C62 50 50 60 44 70C38 80 34 90 30 95H10Z" fill="#1d4ed8"/>
+                <circle cx="68" cy="34" r="2.5" fill="#ffffff"/>
+                <circle cx="58" cy="40" r="2" fill="#ffffff"/>
+                <circle cx="48" cy="48" r="2" fill="#ffffff"/>
+              </svg>
+            </div>
+          </div>
+
+          <h1 class="app-title">منصة موجة البيان</h1>
+          <p class="app-description">
+            منصتك المتخصصة في الدعم الفني والمقارنة البرمجية بين نماذج <strong>Google Gemini</strong> و <strong>DeepSeek</strong> مع ذاكرة RAG ومحكم النماذج الذكي.
+          </p>
+        </section>
+
+        <!-- 4 Grid Action Cards -->
+        <section class="cards-grid">
+          <div class="action-card" onclick="openInfoCard('models')">
+            <div class="card-icon">✨</div>
+            <div>
+              <div class="card-title">النماذج المتوفرة</div>
+              <div class="card-subtitle">مقارنة أحدث إصدارات Gemini و DeepSeek</div>
+            </div>
+          </div>
+
+          <div class="action-card" onclick="openInfoCard('python')">
+            <div class="card-icon">🐍</div>
+            <div>
+              <div class="card-title">البدء مع Python</div>
+              <div class="card-subtitle">أكواد الربط بمكتبة google-genai الرسمية</div>
+            </div>
+          </div>
+
+          <div class="action-card" onclick="openInfoCard('pricing')">
+            <div class="card-icon">📊</div>
+            <div>
+              <div class="card-title">الحدود والأسعار</div>
+              <div class="card-subtitle">الـ 15 طلب المجاني وخطة Context Caching</div>
+            </div>
+          </div>
+
+          <div class="action-card" onclick="openInfoCard('compare')">
+            <div class="card-icon">⚡</div>
+            <div>
+              <div class="card-title">Flash vs Pro</div>
+              <div class="card-subtitle">السرعة الفائقة مقابل الاستدلال المعقد</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Smart Question Suggestions -->
+        <section class="smart-suggestions-wrap">
+          <div class="suggestions-header">
+            <div class="suggestions-title">
+              <span style="color: #fbbf24;">✨</span>
+              <span>اقتراحات الأسئلة الذكية</span>
+            </div>
+            <div class="model-tabs">
+              <button id="tab-gemini" class="tab-btn active" onclick="switchProvider('gemini')">Gemini</button>
+              <button id="tab-deepseek" class="tab-btn" onclick="switchProvider('deepseek')">DeepSeek</button>
+            </div>
+          </div>
+          <div id="suggestions-container" class="suggestions-container"></div>
+        </section>
+
+        <!-- Home Bottom Input Prompt Bar -->
+        <div class="prompt-bar-wrap">
+          <div class="prompt-bar">
+            <button class="chat-toggle-btn" onclick="openChatScreen()" title="فتح صفحة المحادثة">💬</button>
+            <input type="text" id="home-input" class="prompt-input" placeholder="اكتب سؤالك التقني للتحكيم بين النماذج..." onkeydown="if(event.key==='Enter') submitFromHome();" />
+            <button class="prompt-btn" onclick="submitFromHome()">➤</button>
+          </div>
         </div>
+
       </div>
 
-      <h1 class="app-title">منصة موجة البيان</h1>
-      <p class="app-description">
-        منصتك المتخصصة في الدعم الفني لنماذج الذكاء الاصطناعي من Google Gemini و DeepSeek. اختر سؤالاً مقترحاً أو ابدأ محادثتك مباشرة.
-      </p>
-    </section>
-
-    <!-- 4 Cards Grid -->
-    <div class="cards-grid">
-      <!-- Card 1 -->
-      <div class="action-card" onclick="openModal('models')">
-        <div class="card-icon">✨</div>
-        <div>
-          <div class="card-title">النماذج المتوفرة</div>
-          <div class="card-subtitle">تعرف على أحدث إصدارات Gemini ومقارنتها</div>
-        </div>
-      </div>
-
-      <!-- Card 2 -->
-      <div class="action-card" onclick="openModal('python')">
-        <div class="card-icon">🐍</div>
-        <div>
-          <div class="card-title">البدء مع Python</div>
-          <div class="card-subtitle">مثال عملي لربط Gemini بـ Python</div>
-        </div>
-      </div>
-
-      <!-- Card 3 -->
-      <div class="action-card" onclick="openModal('pricing')">
-        <div class="card-icon">📊</div>
-        <div>
-          <div class="card-title">الحدود والأسعار</div>
-          <div class="card-subtitle">تفاصيل الأسعار والقيود لكل نموذج</div>
-        </div>
-      </div>
-
-      <!-- Card 4 -->
-      <div class="action-card" onclick="openModal('compare')">
-        <div class="card-icon">⚡</div>
-        <div>
-          <div class="card-title">Flash vs Pro</div>
-          <div class="card-subtitle">مقارنة شاملة بين النماذج</div>
-        </div>
-      </div>
+      <footer class="app-footer">
+        2026 © موجة البيان • Dual Model Arbiter & RAG Engine
+      </footer>
     </div>
 
-    <!-- Smart Suggestions Section -->
-    <div class="smart-suggestions-wrap">
-      <div class="suggestions-header">
-        <div class="suggestions-title">
-          <span style="color: #fbbf24;">✨</span>
-          <span>اقتراحات الأسئلة الذكية</span>
+    <!-- SCREEN 2: FULL CHAT VIEW -->
+    <div id="screen-chat" class="screen-view hidden-right">
+      
+      <header class="chat-screen-header">
+        <button class="chat-back-btn" onclick="closeChatScreen()" title="العودة للرئيسية">✕</button>
+        <div class="chat-header-info">
+          <div>
+            <div class="chat-title">
+              <span>مستشار موجة البيان التقني</span>
+              <span class="arbiter-badge">RAG + Arbiter</span>
+            </div>
+            <div class="chat-subtitle">موجّه ذكي بين Gemini 3.8 Flash & DeepSeek R1</div>
+          </div>
         </div>
-        <div class="model-tabs">
-          <button id="tab-gemini" class="tab-btn active" onclick="switchProvider('gemini')">Gemini</button>
-          <button id="tab-deepseek" class="tab-btn" onclick="switchProvider('deepseek')">DeepSeek</button>
+        <button class="chat-back-btn" onclick="resetChatHistory()" title="إعادة بدء الدردشة">🔄</button>
+      </header>
+
+      <div id="chat-messages" class="chat-messages-container"></div>
+
+      <footer class="chat-input-bar">
+        <div class="chat-quick-chips">
+          <span class="chat-chip" onclick="sendChatMessage('كود بايثون سريع لـ Gemini 3.8 Flash')">🐍 بايثون لـ Flash</span>
+          <span class="chat-chip" onclick="sendChatMessage('ما الفرق الجوهري بين Flash و Pro؟')">⚡ Flash vs Pro</span>
+          <span class="chat-chip" onclick="sendChatMessage('كيف استفيد من الـ 15 طلب مجاني بالدقيقة؟')">📊 الحصة المجانية</span>
+          <span class="chat-chip" onclick="sendChatMessage('مقارنة DeepSeek R1 مع Gemini')">🧠 استدلال R1</span>
         </div>
-      </div>
-      <div id="suggestions-container" class="suggestions-container">
-        <!-- Rendered via JavaScript -->
-      </div>
+
+        <div class="prompt-bar">
+          <input type="text" id="chat-input" class="prompt-input" placeholder="اسأل المستشار التقني..." onkeydown="if(event.key==='Enter') submitFromChat();" />
+          <button class="prompt-btn" onclick="submitFromChat()">➤</button>
+        </div>
+      </footer>
     </div>
 
-    <!-- Live prompt bar -->
-    <div class="prompt-bar-wrap">
-      <div class="prompt-bar">
-        <input type="text" id="user-input" class="prompt-input" placeholder="اكتب سؤالك التقني هنا..." onkeydown="if(event.key==='Enter') sendChat();" />
-        <button class="prompt-btn" onclick="sendChat()">➤</button>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-      2026 © موجة البيان • Powered by Gemini 3.8 Flash
-    </footer>
-
-    <!-- Interactive Modal -->
-    <div class="modal-backdrop" id="modal-backdrop">
-      <div class="modal-content" id="modal-body">
-        <!-- Injected via JavaScript -->
+    <!-- MODAL POPUP FOR CARDS -->
+    <div id="info-modal" class="info-modal" onclick="if(event.target===this) closeInfoCard();">
+      <div class="info-modal-card">
+        <div class="info-modal-header">
+          <h3 id="modal-title" style="font-size: 14px; font-weight: 700; color: white;">تفاصيل</h3>
+          <button class="info-modal-close" onclick="closeInfoCard()">✕</button>
+        </div>
+        <div id="modal-body" style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 16px;"></div>
+        <button id="modal-chat-cta" style="width: 100%; padding: 10px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 12px; cursor: pointer;">
+          💬 ابدأ المحادثة المباشرة حول هذا الموضوع
+        </button>
       </div>
     </div>
 
   </main>
 
   <script>
-    const modalContents = {
-      models: `
-        <div class="modal-header">
-          <h3>✨ النماذج المتوفرة وأحدث الإصدارات</h3>
-          <button class="close-btn" onclick="closeModal()">إغلاق</button>
-        </div>
-        <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 10px;">
-          • <strong>Gemini 3.8 Flash:</strong> فائق السرعة والاقتصاد، مثالي للشات والتطبيقات الفورية بسياق 1M رمز.<br>
-          • <strong>Gemini 3.1 Pro:</strong> الأقوى في التفكير المنطقي والبرمجة الصعبة بسياق 2M رمز.<br>
-          • <strong>DeepSeek V3:</strong> معمارية خليط الخبراء (MoE) مفتوحة الأوزان عالية الكفاءة.
-        </p>
-      `,
-      python: `
-        <div class="modal-header">
-          <h3>🐍 البدء مع Python و SDK الرسمي</h3>
-          <button class="close-btn" onclick="closeModal()">إغلاق</button>
-        </div>
-        <p style="font-size: 12px; color: #94a3b8;">تثبيت الحزمة الرسمية وكود الاستدعاء:</p>
-        <pre><code># pip install google-genai
-from google import genai
-import os
+    /* 1. RAG & DUAL MODEL ENGINE */
+    const RAG_DOCS = [
+      {
+        id: "gemini-models",
+        title: "وثائق نماذج Google Gemini 3.8 Flash و Pro",
+        keywords: ["gemini", "flash", "pro", "3.8", "3.1", "سرعة", "سياق"],
+        content: "Gemini 3.8 Flash هو النموذج الأسرع بزمن استجابة 0.4 ثانية وسياق 1M رمز. Gemini 3.1 Pro هو الرائد في الاستدلال المعقد والبرمجة الصعبة بسياق 2M رمز."
+      },
+      {
+        id: "deepseek-models",
+        title: "وثائق نماذج DeepSeek V3 و R1",
+        keywords: ["deepseek", "v3", "r1", "moe", "استدلال", "تفكير", "منطق"],
+        content: "DeepSeek V3 يعتمد معمارية خليط الخبراء (MoE) بـ 671B معلمة لتوفير التكلفة. DeepSeek R1 متخصص في التفكير المتسلسل والرياضيات المعقدة بالتعلم المعزز RL."
+      },
+      {
+        id: "python-sdk",
+        title: "حزمة google-genai الرسمية لـ Python",
+        keywords: ["بايثون", "python", "كود", "sdk", "google-genai", "تثبيت"],
+        content: "التثبيت: pip install google-genai. الاستدعاء: from google import genai; client = genai.Client(); response = client.models.generate_content(model='gemini-3.8-flash', contents='...')"
+      },
+      {
+        id: "pricing-caching",
+        title: "الأسعار والحصة المجانية والتخزين المؤقت",
+        keywords: ["سعر", "اسعار", "تكلفة", "مجاني", "quota", "caching", "rpm"],
+        content: "الحصة المجانية في Google AI Studio تمنح 15 طلب/دقيقة (RPM) و1M رمز/دقيقة مجاناً. Gemini 3.8 Flash يكلف 0.10$ لكل مليون رمز إدخال، وميزة Context Caching توفر حتى 75%."
+      }
+    ];
 
-client = genai.Client()
-response = client.models.generate_content(
-    model="gemini-3.8-flash",
-    contents="اكتب دالة بايثون سريعة لحساب الفائدة",
-)
-print(response.text)</code></pre>
-      `,
-      pricing: `
-        <div class="modal-header">
-          <h3>📊 الحدود والأسعار</h3>
-          <button class="close-btn" onclick="closeModal()">إغلاق</button>
-        </div>
-        <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-          • <strong>الخطة المجانية (AI Studio):</strong> حتى 15 طلب/دقيقة مجاناً تماماً للتطوير.<br>
-          • <strong>Gemini 3.8 Flash:</strong> $0.10 لكل 1M رمز إدخال و $0.40 لكل 1M رمز إخراج.<br>
-          • <strong>Gemini 3.1 Pro:</strong> $1.25 لكل 1M رمز إدخال.<br>
-          • <strong>ميزة Context Caching:</strong> خصم حتى 75% للسياقات الطويلة.
-        </p>
-      `,
-      compare: `
-        <div class="modal-header">
-          <h3>⚡ مقارنة Flash مقابل Pro</h3>
-          <button class="close-btn" onclick="closeModal()">إغلاق</button>
-        </div>
-        <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-          • <strong>السرعة:</strong> Flash يستجيب في أقل من نصف ثانية مقابل 1.5 - 3 ثوانٍ لـ Pro.<br>
-          • <strong>التكلفة:</strong> Flash أوفر بأكثر من 90% ومثالي لـ 85% من المشاريع.<br>
-          • <strong>الاستدلال المعقد:</strong> يتفوق Pro في الرياضيات المعقدة وهندسة النظم.
-        </p>
-      `
-    };
-
-    function openModal(type) {
-      document.getElementById('modal-body').innerHTML = modalContents[type] || '';
-      document.getElementById('modal-backdrop').classList.add('active');
+    function searchRAG(query) {
+      const q = query.toLowerCase();
+      let bestDocs = [];
+      RAG_DOCS.forEach(doc => {
+        let match = false;
+        doc.keywords.forEach(kw => {
+          if (q.includes(kw.toLowerCase())) match = true;
+        });
+        if (match) bestDocs.push(doc.title);
+      });
+      if (bestDocs.length === 0) bestDocs.push(RAG_DOCS[0].title);
+      return bestDocs;
     }
 
-    function closeModal() {
-      document.getElementById('modal-backdrop').classList.remove('active');
+    function evaluateQuery(query) {
+      const q = query.toLowerCase();
+      if (q.includes("استدلال") || q.includes("تفكير") || q.includes("رياضيات") || q.includes("r1") || q.includes("منطق") || q.includes("برهان")) {
+        return {
+          bestModel: "DeepSeek R1",
+          provider: "DeepSeek",
+          reason: "النموذج الأفضل لهذه المهمة نظراً لتدريبه بالتعلم المعزز النقي (RL) وقدرته الفائقة على الاستدلال المنطقي والتفكير المتسلسل.",
+          geminiNote: "Gemini 3.1 Pro يقدم استدلالاً قوياً بسياق هائل (2M رمز)، بينما يتفوق R1 في إظهار تفكير الخطوات الذاتية.",
+          deepseekNote: "DeepSeek R1 يظهر تسلسل التفكير المنطقي بدقة ويصل للحل النهائي بأسلوب برهاني متكامل."
+        };
+      }
+      if (q.includes("moe") || q.includes("معمارية") || q.includes("مفتوح") || q.includes("خبراء") || q.includes("v3")) {
+        return {
+          bestModel: "DeepSeek V3",
+          provider: "DeepSeek",
+          reason: "النموذج الأفضل لتطبيقات النماذج المفتوحة ومعمارية MoE التي تفعّل 37 مليار معلمة فقط لكل رمز.",
+          geminiNote: "Gemini يوفر بنية تحتية سحابية مغلقة متكاملة على Google Cloud مع استقرار فائق وسرعة استجابة.",
+          deepseekNote: "DeepSeek V3 رائد في النماذج مفتوحة الأوزان مع توافق كامل مع مكتبة OpenAI الرسمية."
+        };
+      }
+      return {
+        bestModel: "Gemini 3.8 Flash",
+        provider: "Google Gemini",
+        reason: "النموذج الأفضل سرعةً وتكلفةً مع دعم مكتبة google-genai الرسمية والحصة المجانية (15 RPM) ونافذة سياق 1M رمز.",
+        geminiNote: "Gemini 3.8 Flash يمنحك استجابة فورية (~0.4 ثانية)، سياق مليون رمز، وخصم 75% مع خاصية Context Caching.",
+        deepseekNote: "DeepSeek V3 خيار قوي ومنافس، إلا أن Gemini Flash يتفوق في سرعة الاستجابة ودعم Google AI Studio المباشر."
+      };
     }
 
+    function generateTechnicalResponse(query, evaluation, ragSources) {
+      const q = query.toLowerCase();
+      let coreText = "";
+
+      if (q.includes("بايثون") || q.includes("python") || q.includes("كود") || q.includes("sdk")) {
+        coreText = "لربط النماذج برمجياً عبر بايثون:<br><br>" +
+          "<strong>1. كود Google Gemini (مكتبة google-genai الرسمية الحديثة):</strong><br>" +
+          "<pre><code># pip install google-genai\n" +
+          "import os\n" +
+          "from google import genai\n\n" +
+          "client = genai.Client(api_key=os.environ.get(\"GEMINI_API_KEY\"))\n" +
+          "response = client.models.generate_content(\n" +
+          "    model=\"gemini-3.8-flash\",\n" +
+          "    contents=\"اكتب دالة بايثون لحساب الأعداد الأولية\",\n" +
+          ")\n" +
+          "print(response.text)</code></pre><br>" +
+          "<strong>2. كود DeepSeek V3 (عبر مكتبة OpenAI المتوافقة):</strong><br>" +
+          "<pre><code># pip install openai\n" +
+          "from openai import OpenAI\n" +
+          "import os\n\n" +
+          "client = OpenAI(\n" +
+          "    api_key=os.environ.get(\"DEEPSEEK_API_KEY\"),\n" +
+          "    base_url=\"https://api.deepseek.com\"\n" +
+          ")\n" +
+          "response = client.chat.completions.create(\n" +
+          "    model=\"deepseek-chat\",\n" +
+          "    messages=[{\"role\": \"user\", \"content\": \"اشرح كود بايثون\"}]\n" +
+          ")\n" +
+          "print(response.choices[0].message.content)</code></pre>";
+      } else if (q.includes("سعر") || q.includes("تكلفة") || q.includes("مجاني") || q.includes("quota")) {
+        coreText = "تفاصيل الأسعار والحدود الاقتصادية:<br><br>" +
+          "• <strong>الخطة المجانية في Google AI Studio:</strong> تتيح 15 طلب/دقيقة (RPM) و 1M رمز/دقيقة مجاناً لتطوير واختبار تطبيقك.<br>" +
+          "• <strong>Gemini 3.8 Flash (مدفوع):</strong> 0.10$ لكل 1M رمز إدخال و 0.40$ لكل 1M رمز إخراج.<br>" +
+          "• <strong>DeepSeek V3:</strong> 0.14$ لكل 1M رمز إدخال و 0.28$ لكل 1M رمز إخراج.<br>" +
+          "• <strong>ميزة Context Caching:</strong> تخفض تكلفة السياق في Gemini بنسبة تصل إلى 75% للمدخلات الطويلة المتكررة.";
+      } else if (q.includes("استدلال") || q.includes("r1") || q.includes("pro") || q.includes("رياضيات")) {
+        coreText = "مقارنة الاستدلال والتفكير المنطقي:<br><br>" +
+          "• <strong>DeepSeek R1:</strong> الأفضل في إظهار مسار الاستدلال وحل المسائل البرمجية والرياضية العميقة مع إظهار تفاصيل التفكير خطوة بخطوة.<br>" +
+          "• <strong>Gemini 3.1 Pro:</strong> يتفوق عندما تكون المسألة تتطلب سياقاً ضخماً يتجاوز 128 ألف رمز (يصل إلى 2,000,000 رمز) مع قدرات وسائط متعددة خارقة.";
+      } else {
+        coreText = "بناءً على تحكيم منصة <strong>موجة البيان</strong>:<br>" +
+          "• <strong>Gemini 3.8 Flash</strong> هو الخيار الموصى به لمعظم التطبيقات اليومية بفضل زمن استجابته الفوري (0.4 ثانية) وموثوقية خدمات Google.<br>" +
+          "• <strong>DeepSeek V3 / R1</strong> يمثلان خياراً استثنائياً للمهام التي تحتاج استدلالاً كودياً عميقاً أو استقلالية البنية التحتية مفتوحة الأوزان.";
+      }
+
+      return coreText;
+    }
+
+    /* 2. SMART SUGGESTIONS */
     const providerQuestions = {
       gemini: [
         { text: "ما الفرق بين Gemini 3.8 Flash و Pro من حيث السرعة والتكلفة؟", tag: "مقارنة" },
@@ -603,18 +988,22 @@ print(response.text)</code></pre>
       const container = document.getElementById('suggestions-container');
       if (!container) return;
       const questions = providerQuestions[currentProvider] || [];
-      container.innerHTML = questions.map((q, idx) => `
-        <div class="suggestion-chip" onclick="askQuestion('${q.text.replace(/'/g, "\\'")}')">
-          <div class="chip-main">
-            <span class="chip-num">${idx + 1}</span>
-            <span class="chip-text">${q.text}</span>
-          </div>
-          <div class="chip-meta">
-            <span class="chip-tag">${q.tag}</span>
-            <span class="chip-arrow">←</span>
-          </div>
-        </div>
-      `).join('');
+      let html = '';
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        const safeText = q.text.replace(/'/g, "\\'");
+        html += '<div class="suggestion-chip" onclick="triggerSuggestion(\'' + safeText + '\')">' +
+          '<div class="chip-main">' +
+            '<span class="chip-num">' + (i + 1) + '</span>' +
+            '<span class="chip-text">' + q.text + '</span>' +
+          '</div>' +
+          '<div class="chip-meta">' +
+            '<span class="chip-tag">' + q.tag + '</span>' +
+            '<span class="chip-arrow">←</span>' +
+          '</div>' +
+        '</div>';
+      }
+      container.innerHTML = html;
     }
 
     function switchProvider(prov) {
@@ -626,34 +1015,239 @@ print(response.text)</code></pre>
       renderSuggestions();
     }
 
-    function askQuestion(q) {
-      const input = document.getElementById('user-input');
-      if (input) input.value = q;
-      sendChat();
+    function triggerSuggestion(text) {
+      openChatScreen();
+      sendChatMessage(text);
     }
 
-    // Initialize suggestions on load
-    document.addEventListener('DOMContentLoaded', renderSuggestions);
+    /* 3. SCREEN SWITCHING */
+    function openChatScreen(initialMessage) {
+      const home = document.getElementById('screen-home');
+      const chat = document.getElementById('screen-chat');
+      home.classList.remove('active');
+      home.classList.add('hidden-left');
+      chat.classList.remove('hidden-right');
+      chat.classList.add('active');
+
+      if (initialMessage && chatHistory.length === 1) {
+        sendChatMessage(initialMessage);
+      }
+    }
+
+    function closeChatScreen() {
+      const home = document.getElementById('screen-home');
+      const chat = document.getElementById('screen-chat');
+      chat.classList.remove('active');
+      chat.classList.add('hidden-right');
+      home.classList.remove('hidden-left');
+      home.classList.add('active');
+    }
+
+    function submitFromHome() {
+      const input = document.getElementById('home-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      openChatScreen();
+      sendChatMessage(text);
+    }
+
+    function submitFromChat() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      sendChatMessage(text);
+    }
+
+    /* 4. CHAT HISTORY */
+    let chatHistory = [
+      {
+        id: "msg-welcome",
+        role: "assistant",
+        text: "أهلاً بك في منصة **موجة البيان** للدعم الفني للذكاء الاصطناعي! 👋<br><br>أنا مستشارك التقني المزوّد بـ <strong>ذاكرة RAG الفنية</strong> ونظام <strong>تحكيم النماذج الذكي (Model Arbiter)</strong> بين Google Gemini و DeepSeek.<br><br>اطرح أي سؤال حول: الأكواد البرمجية، مقارنة النماذج، أداء الاستدلال، أو أسعار الاستهلاك وسأقوم بتحكيم الإجابة الأفضل فوراً.",
+        timestamp: "الآن"
+      }
+    ];
+
+    function renderChatMessages() {
+      const container = document.getElementById('chat-messages');
+      if (!container) return;
+
+      let html = '';
+      for (let i = 0; i < chatHistory.length; i++) {
+        const msg = chatHistory[i];
+        if (msg.role === 'user') {
+          html += '<div class="msg-wrap user">' +
+            '<div class="msg-avatar">👤</div>' +
+            '<div class="msg-bubble">' +
+              '<div>' + escapeHtml(msg.text) + '</div>' +
+              '<div class="msg-footer"><span>' + msg.timestamp + '</span></div>' +
+            '</div>' +
+          '</div>';
+        } else {
+          let arbiterHtml = '';
+          if (msg.evaluation) {
+            let ragText = '';
+            if (msg.ragSources && msg.ragSources.length > 0) {
+              ragText = '<div class="rag-tag"><span>🧠 ذاكرة RAG المسترجعة:</span><strong>' + msg.ragSources.join(' • ') + '</strong></div>';
+            }
+
+            arbiterHtml = '<div class="arbiter-card">' +
+              '<div class="arbiter-top">' +
+                '<span>🏆 النموذج الأفضل المقترح: ' + msg.evaluation.bestModel + '</span>' +
+                '<span style="font-size: 9px; padding: 2px 6px; background: rgba(99,102,241,0.2); border-radius: 4px;">' + msg.evaluation.provider + '</span>' +
+              '</div>' +
+              '<div class="arbiter-reason">' + msg.evaluation.reason + '</div>' +
+              ragText +
+            '</div>' +
+            '<div class="perspective-tabs">' +
+              '<button class="perspective-btn active" onclick="switchPerspective(this, \'' + msg.id + '\', \'best\')">🏆 الرد المعتمد</button>' +
+              '<button class="perspective-btn" onclick="switchPerspective(this, \'' + msg.id + '\', \'gemini\')">⚡ رؤية Gemini</button>' +
+              '<button class="perspective-btn" onclick="switchPerspective(this, \'' + msg.id + '\', \'deepseek\')">🧠 رؤية DeepSeek</button>' +
+            '</div>' +
+            '<div id="' + msg.id + '-p-best" class="perspective-content active">' + formatMarkdown(msg.text) + '</div>' +
+            '<div id="' + msg.id + '-p-gemini" class="perspective-content"><strong>⚡ تحليل Google Gemini:</strong><br>' + msg.evaluation.geminiNote + '</div>' +
+            '<div id="' + msg.id + '-p-deepseek" class="perspective-content"><strong>🧠 تحليل DeepSeek:</strong><br>' + msg.evaluation.deepseekNote + '</div>';
+          } else {
+            arbiterHtml = '<div>' + formatMarkdown(msg.text) + '</div>';
+          }
+
+          const safeCopy = msg.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+          html += '<div class="msg-wrap assistant">' +
+            '<div class="msg-avatar">🌊</div>' +
+            '<div class="msg-bubble">' +
+              arbiterHtml +
+              '<div class="msg-footer">' +
+                '<span>منصة موجة البيان • ' + msg.timestamp + '</span>' +
+                '<button class="copy-btn" onclick="navigator.clipboard.writeText(\'' + safeCopy + '\'); alert(\'تم نسخ الرد بنجاح!\');">نسخ 📋</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }
+      }
+
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function switchPerspective(btn, msgId, type) {
+      const parent = btn.parentElement;
+      parent.querySelectorAll('.perspective-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const card = parent.parentElement;
+      card.querySelectorAll('.perspective-content').forEach(c => c.classList.remove('active'));
+      const target = document.getElementById(msgId + '-p-' + type);
+      if (target) target.classList.add('active');
+    }
+
+    function sendChatMessage(queryText) {
+      if (!queryText.trim()) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+
+      chatHistory.push({
+        id: "msg-" + Date.now(),
+        role: "user",
+        text: queryText,
+        timestamp: timeStr
+      });
+      renderChatMessages();
+
+      const ragSources = searchRAG(queryText);
+      const evaluation = evaluateQuery(queryText);
+      const answerText = generateTechnicalResponse(queryText, evaluation, ragSources);
+
+      setTimeout(() => {
+        chatHistory.push({
+          id: "msg-" + (Date.now() + 1),
+          role: "assistant",
+          text: answerText,
+          evaluation: evaluation,
+          ragSources: ragSources,
+          timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+        });
+        renderChatMessages();
+      }, 350);
+    }
+
+    function resetChatHistory() {
+      if (confirm('هل ترغب في مسح سجل المحادثة والبدء من جديد؟')) {
+        chatHistory = [
+          {
+            id: "msg-welcome-reset",
+            role: "assistant",
+            text: "تم بدء جلسة محادثة جديدة مع مستشار موجة البيان التقني. اسألني عن أي نموذج أو كود برمجي وسأزودك بالإجابة الأفضل فوراً.",
+            timestamp: "الآن"
+          }
+        ];
+        renderChatMessages();
+      }
+    }
+
+    /* 5. CARD MODAL DIALOGS */
+    const CARD_DATA = {
+      models: {
+        title: "✨ النماذج المتوفرة وأحدث الإصدارات",
+        text: "• <strong>Gemini 3.8 Flash:</strong> فائق السرعة والاقتصاد (~0.4 ثانية)، مثالي للتطبيقات الفورية والشات بسياق مليون رمز.<br><br>• <strong>Gemini 3.1 Pro:</strong> الأقوى في التفكير المنطقي والبرمجة الصعبة بسياق ضخم يصل إلى مليوني رمز (2M tokens).<br><br>• <strong>DeepSeek V3:</strong> معمارية خليط الخبراء (MoE) مفتوحة الأوزان عالية الكفاءة الحسابية.<br><br>• <strong>DeepSeek R1:</strong> نموذج الاستدلال الرائد بالتعلم المعزز لحل المسائل الرياضية المعقدة خطوة بخطوة.",
+        prompt: "قارن بالتفصيل بين Gemini 3.8 Flash و DeepSeek V3 في بيئات الإنتاج"
+      },
+      python: {
+        title: "🐍 البدء مع Python و SDK الرسمي",
+        text: "لتثبيت الحزمة الرسمية الحديثة من Google:<br><pre><code>pip install google-genai</code></pre><br>كود استدعاء نموذج Gemini 3.8 Flash:<br><pre><code>from google import genai\nclient = genai.Client()\nres = client.models.generate_content(\n    model='gemini-3.8-flash',\n    contents='اكتب كود بايثون سريع'\n)\nprint(res.text)</code></pre>",
+        prompt: "اكتب لي كود بايثون كامل لربط Gemini 3.8 Flash مع تفعيل البث المباشر Streaming"
+      },
+      pricing: {
+        title: "📊 الحدود والأسعار والحصة المجانية",
+        text: "• <strong>الخطة المجانية في AI Studio:</strong> حتى 15 طلب/دقيقة (RPM) و 1,000,000 رمز/دقيقة مجاناً تماماً بدون بطاقة بنكية.<br><br>• <strong>Gemini 3.8 Flash:</strong> 0.10$ لكل 1M رمز إدخال و 0.40$ لكل 1M رمز إخراج.<br><br>• <strong>Gemini 3.1 Pro:</strong> 1.25$ لكل 1M رمز إدخال و 5.00$ لكل 1M رمز إخراج.<br><br>• <strong>ميزة Context Caching:</strong> خصم حتى 75% للسياقات الطويلة المتكررة.",
+        prompt: "كيف أحسب تكلفة استهلاك مليون رمز شهرياً مع خاصية Context Caching؟"
+      },
+      compare: {
+        title: "⚡ مقارنة Flash مقابل Pro",
+        text: "• <strong>السرعة وزمن الاستجابة:</strong> Flash يستجيب في أقل من نصف ثانية مقابل 1.5 - 3 ثوانٍ لـ Pro.<br><br>• <strong>التكلفة:</strong> Flash أوفر بأكثر من 90% ومناسب لـ 85% من المشاريع الحية.<br><br>• <strong>الاستدلال المعقد:</strong> يتفوق Pro في الرياضيات المعقدة وهندسة النظم وتحليل مستودعات الكود الضخمة.",
+        prompt: "متى اختار Gemini Pro بدلاً من Gemini Flash في مشروعي البرمجي؟"
+      }
+    };
+
+    function openInfoCard(id) {
+      const data = CARD_DATA[id];
+      if (!data) return;
+      document.getElementById('modal-title').innerHTML = data.title;
+      document.getElementById('modal-body').innerHTML = data.text;
+      const ctaBtn = document.getElementById('modal-chat-cta');
+      ctaBtn.onclick = function() {
+        closeInfoCard();
+        openChatScreen();
+        sendChatMessage(data.prompt);
+      };
+      document.getElementById('info-modal').classList.add('active');
+    }
+
+    function closeInfoCard() {
+      document.getElementById('info-modal').classList.remove('active');
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function formatMarkdown(text) {
+      if (!text) return '';
+      return text
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderSuggestions();
+      renderChatMessages();
+    });
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       renderSuggestions();
-    }
-
-    function sendChat() {
-      const input = document.getElementById('user-input');
-      const val = input.value.trim();
-      if (!val) return;
-      document.getElementById('modal-body').innerHTML = `
-        <div class="modal-header">
-          <h3>رد مستشار موجة البيان التقني</h3>
-          <button class="close-btn" onclick="closeModal()">إغلاق</button>
-        </div>
-        <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-          <p style="color: #818cf8; margin-bottom: 8px;">سؤالك: ${val}</p>
-          <p>أهلاً بك! في منصة <strong>موجة البيان</strong>، يُنصح دائماً بالاعتماد على <strong>Gemini 3.8 Flash</strong> كخيار افتراضي سريع واقتصادي، وربطه بمكتبة <code>google-genai</code> الحديثة. لأي استفسار برمجي محدد نحن في خدمتك دائماً.</p>
-        </div>
-      `;
-      document.getElementById('modal-backdrop').classList.add('active');
-      input.value = '';
+      renderChatMessages();
     }
   </script>
 </body>
