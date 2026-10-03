@@ -9,7 +9,7 @@
             --bg-dark: #0b0f19;
             --bg-card: #151b2b;
             --bg-user-msg: #4f46e5;
-            --bg-ai-msg: #1e2538;
+            --bg-ai-msg: #1a2234;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --accent: #8b5cf6;
@@ -57,8 +57,8 @@
         #main-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 100px;
+            padding: 15px;
+            padding-bottom: 110px;
         }
 
         #home-view {
@@ -80,17 +80,17 @@
         .cards-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
             width: 100%;
             max-width: 600px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
 
         .card {
             background-color: var(--bg-card);
             border: 1px solid #1f2937;
             border-radius: 16px;
-            padding: 20px;
+            padding: 18px 12px;
             text-align: center;
             cursor: pointer;
             transition: transform 0.2s, background 0.2s;
@@ -113,50 +113,57 @@
             background-color: var(--bg-card);
             color: var(--text-main);
             border: 1px solid #1f2937;
-            padding: 15px;
+            padding: 14px;
             border-radius: 12px;
             text-align: right;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
+            font-size: 0.95rem;
         }
 
         #chat-view {
             display: none;
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
             max-width: 800px;
             margin: 0 auto;
+            width: 100%;
         }
 
         .message {
             display: flex;
             flex-direction: column;
-            max-width: 85%;
+            max-width: 90%;
+            word-wrap: break-word;
         }
 
         .msg-user {
             align-self: flex-start;
             background-color: var(--bg-user-msg);
-            padding: 12px 18px;
+            padding: 12px 16px;
             border-radius: 16px 16px 0 16px;
+            font-size: 1.05rem;
+            line-height: 1.6;
         }
         
         .msg-ai {
             align-self: flex-end;
             background-color: var(--bg-ai-msg);
-            padding: 12px 18px;
+            padding: 12px 16px;
             border-radius: 16px 16px 16px 0;
             border: 1px solid #2d3748;
+            font-size: 1.05rem;
         }
 
         .msg-ai-arbiter {
             align-self: flex-end;
             background-color: var(--bg-ai-msg);
             border: 1px solid #2d3748;
-            padding: 15px;
+            padding: 16px;
             border-radius: 16px 16px 16px 0;
             width: 100%;
+            max-width: 100%;
         }
 
         .arbiter-header {
@@ -164,21 +171,26 @@
             justify-content: space-between;
             border-bottom: 1px solid #2d3748;
             padding-bottom: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .winner-badge {
             color: #fbbf24;
             font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            font-size: 1.1rem;
         }
 
+        /* تنسيق الخط والفقرات لقراءة واضحة وكبيرة */
         .model-details {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            line-height: 1.5;
+            font-size: 1.15rem;
+            line-height: 1.9;
+            color: #f8fafc;
+            letter-spacing: 0.2px;
+        }
+
+        .model-details strong {
+            color: #93c5fd;
+            font-weight: 700;
         }
 
         .input-area {
@@ -187,7 +199,7 @@
             left: 0;
             right: 0;
             background-color: var(--bg-dark);
-            padding: 15px 20px;
+            padding: 12px 16px;
             border-top: 1px solid #1f2937;
             display: flex;
             gap: 10px;
@@ -199,7 +211,7 @@
             display: flex;
             background-color: var(--bg-card);
             border-radius: 24px;
-            padding: 5px 15px;
+            padding: 4px 14px;
             width: 100%;
             max-width: 800px;
             align-items: center;
@@ -212,7 +224,7 @@
             color: white;
             padding: 12px;
             outline: none;
-            font-size: 1rem;
+            font-size: 1.05rem;
         }
 
         .send-btn {
@@ -220,12 +232,13 @@
             color: white;
             border: none;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1.1rem;
         }
 
         @keyframes fadeIn {
@@ -248,26 +261,26 @@
     <div id="main-container">
         <div id="home-view">
             <h1 class="welcome-title">منصة موجة البيان</h1>
-            <p style="color: var(--text-muted); text-align: center; margin-bottom: 30px;">
+            <p style="color: var(--text-muted); text-align: center; margin-bottom: 25px; line-height: 1.6;">
                 منصتك المتخصصة في الدعم الفني والمقارنة البرمجية بين نماذج<br>
                 Google Gemini و DeepSeek مع ذاكرة RAG ومحكم ذكي.
             </p>
 
             <div class="cards-grid">
                 <div class="card" onclick="handleSend('كيف أبدأ مع Python و Gemini؟')">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">🐍</div>
+                    <div style="font-size: 2rem; margin-bottom: 8px;">🐍</div>
                     <h3>البدء مع Python</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">أكواد الربط الرسمية</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">أكواد الربط الرسمية</p>
                 </div>
                 <div class="card" onclick="handleSend('قارن بين Flash و Pro')">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">⚡</div>
+                    <div style="font-size: 2rem; margin-bottom: 8px;">⚡</div>
                     <h3>Flash vs Pro</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">السرعة مقابل الاستدلال</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">السرعة مقابل الاستدلال</p>
                 </div>
             </div>
 
             <div class="suggestions">
-                <h4 style="color: var(--text-muted); margin-bottom: 10px;">✨ اقتراحات الأسئلة الذكية</h4>
+                <h4 style="color: var(--text-muted); margin-bottom: 6px;">✨ اقتراحات الأسئلة الذكية</h4>
                 <button class="suggestion-btn" onclick="handleSend('ما الفرق بين Gemini 3.8 Flash و DeepSeek V3؟')">
                     <span>ما الفرق بين Gemini 3.8 Flash و DeepSeek V3؟</span>
                     <span>←</span>
@@ -284,7 +297,6 @@
 
     <div class="input-area">
         <div class="input-container">
-            <button style="background: none; border: none; color: #94a3b8; padding: 10px; cursor: pointer;">📎</button>
             <input type="text" id="userInput" placeholder="اكتب سؤالك للتحكيم بين النماذج..." onkeypress="handleEnter(event)">
             <button class="send-btn" onclick="handleSend()">➤</button>
         </div>
@@ -314,8 +326,7 @@
             addLoadingMessage(loadingId);
 
             try {
-                // ⚠️ ضع رابط الـ API الفعلي الخاص بك هنا بدلاً من الرابط الوهمي
-                const response = await fetch('https://sua-32b8.onrender.com/api/chat', { 
+                const response = await fetch('/api/chat', { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -325,14 +336,15 @@
 
                 const data = await response.json();
                 
-                document.getElementById(loadingId).remove();
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
                 
-                // نعرض الرد الحقيقي القادم من الخادم
-                addDynamicResponse(data.text || data.response, data.model || 'Gemini/DeepSeek'); 
+                addDynamicResponse(data.text || data.response || 'لم يتم العثور على إجابة', data.model || 'Gemini RAG Engine'); 
 
             } catch (error) {
-                document.getElementById(loadingId).remove();
-                addMessage("عذراً، حدث خطأ في الاتصال بالخادم. تأكد من أن الرابط يعمل.", 'ai');
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+                addMessage("عذراً، تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.", 'ai');
             }
         }
 
@@ -352,8 +364,10 @@
             const arbiterDiv = document.createElement('div');
             arbiterDiv.className = 'message msg-ai-arbiter';
             
-            // تحويل النص إلى HTML ليتم قراءة الأسطر الجديدة بشكل سليم
-            const formattedText = aiText.replace(/\n/g, '<br>');
+            let formattedText = String(aiText)
+                .replace(/\\n/g, '\n')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
             
             arbiterDiv.innerHTML = `
                 <div class="arbiter-header">
@@ -372,7 +386,7 @@
             const loadingDiv = document.createElement('div');
             loadingDiv.id = id;
             loadingDiv.className = 'message msg-ai';
-            loadingDiv.textContent = 'جاري التفكير...';
+            loadingDiv.textContent = 'جاري المعالجة والتفكير...';
             loadingDiv.style.opacity = '0.7';
             chatView.appendChild(loadingDiv);
             scrollToBottom();
