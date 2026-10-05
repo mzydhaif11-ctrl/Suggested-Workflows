@@ -1,9 +1,10 @@
 import os
 import json
+from pathlib import Path
 from typing import Optional, List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from pydantic import BaseModel
 import google.generativeai as genai
 from openai import OpenAI
@@ -35,7 +36,7 @@ if DEEPSEEK_API_KEY:
     )
 
 # ──────────────────────────────────────────────
-# تهيئة التطبيق الأساسي (يجب أن يكون قبل أي @app)
+# التطبيق (FastAPI)
 # ──────────────────────────────────────────────
 app = FastAPI(title="موجة البيان", version="1.0.0")
 
@@ -129,7 +130,7 @@ def retrieve_context(query: str, top_k: int = 3) -> list:
     return contexts
 
 # ──────────────────────────────────────────────
-# المسارات (Endpoints)
+# موديلات الطلب والرد
 # ──────────────────────────────────────────────
 class ChatRequest(BaseModel):
     message: str
@@ -140,18 +141,19 @@ class ChatResponse(BaseModel):
     model_used: str
     sources: List[str] = []
 
+# ──────────────────────────────────────────────
+# الصفحة الرئيسية (تشغيل index.html مباشرة عند فتح الرابط)
+# ──────────────────────────────────────────────
 @app.get("/")
 @app.head("/")
-async def root():
-    return JSONResponse(
-        content={"status": "ok", "service": "موجة البيان"},
-        headers={"Content-Type": "application/json; charset=utf-8"}
-    )
-
-# صفحة واجهة الشات الرسومية للمستخدم
-@app.get("/app", response_class=HTMLResponse)
-async def chat_ui():
-    return """
+async def serve_index():
+    index_file = Path("index.html")
+    # إذا كان ملف index.html موجوداً في المستودع يتم عرضه مباشرة
+    if index_file.is_file():
+        return FileResponse(index_file)
+    
+    # واجهة افتراضية احتياطية في حال لم ترفع index.html بعد
+    return HTMLResponse("""
     <!DOCTYPE html>
     <html dir="rtl" lang="ar">
     <head>
@@ -160,45 +162,42 @@ async def chat_ui():
         <title>منصة موجة البيان</title>
         <style>
             * { box-sizing: border-box; }
-            body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 10px; }
+            body { font-family: system-ui, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 12px; }
             .chat-card { width: 100%; max-width: 480px; height: 90vh; background: #1e293b; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
             .header { background: #2563eb; padding: 18px; text-align: center; font-weight: bold; font-size: 1.2rem; }
             .messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
             .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 0.95rem; word-break: break-word; }
-            .user { background: #3b82f6; align-self: flex-start; border-bottom-right-radius: 2px; }
-            .bot { background: #334155; align-self: flex-end; border-bottom-left-radius: 2px; }
+            .user { background: #3b82f6; align-self: flex-start; }
+            .bot { background: #334155; align-self: flex-end; }
             .input-box { display: flex; padding: 12px; background: #0f172a; gap: 8px; }
             input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; font-size: 1rem; }
             button { background: #2563eb; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
-            button:hover { background: #1d4ed8; }
         </style>
     </head>
     <body>
         <div class="chat-card">
             <div class="header">مستشار موجة البيان</div>
             <div class="messages" id="chat">
-                <div class="msg bot">مرحباً بك في منصة موجة البيان! كيف يمكنني مساعدتك اليوم؟</div>
+                <div class="msg bot">مرحباً بك في منصة موجة البيان! كيف يمكنني مساعدتك؟</div>
             </div>
             <div class="input-box">
                 <input type="text" id="userInput" placeholder="اكتب سؤالك هنا..." onkeydown="if(event.key==='Enter') send()">
                 <button onclick="send()">إرسال</button>
             </div>
         </div>
-
         <script>
             async function send() {
                 const input = document.getElementById('userInput');
                 const chat = document.getElementById('chat');
                 const text = input.value.trim();
                 if (!text) return;
-
                 chat.innerHTML += `<div class="msg user">${text}</div>`;
                 input.value = '';
                 chat.scrollTop = chat.scrollHeight;
 
                 const botMsg = document.createElement('div');
                 botMsg.className = 'msg bot';
-                botMsg.innerText = 'جاري المعالجة...';
+                botMsg.innerText = 'جاري التفكير...';
                 chat.appendChild(botMsg);
                 chat.scrollTop = chat.scrollHeight;
 
@@ -218,8 +217,11 @@ async def chat_ui():
         </script>
     </body>
     </html>
-    """
+    """)
 
+# ──────────────────────────────────────────────
+# نقطة نهاية المحادثة (API)
+# ──────────────────────────────────────────────
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     context = retrieve_context(request.message)
@@ -229,7 +231,7 @@ async def chat(request: ChatRequest):
     if selected_model == "auto":
         selected_model = "deepseek" if any(w in request.message.lower() for w in ["كود", "code", "bug", "دالة"]) else "gemini"
 
-    # المحاولة عبر DeepSeek
+    # 1. التشغيل عبر DeepSeek
     if selected_model == "deepseek" and deepseek_client:
         try:
             resp = deepseek_client.chat.completions.create(
@@ -247,7 +249,7 @@ async def chat(request: ChatRequest):
         except Exception:
             pass
 
-    # المحاولة عبر Gemini مع النماذج المعتمدة
+    # 2. التشغيل عبر Gemini
     if GOOGLE_API_KEY:
         models_to_try = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"]
         for m_name in models_to_try:
@@ -255,11 +257,11 @@ async def chat(request: ChatRequest):
                 model_instance = genai.GenerativeModel(m_name)
                 full_prompt = (
                     f"أنت مستشار الدعم الفني لمنصة موجة البيان.\n"
-                    f"السياق:\n{context_str}\n\n"
+                    f"السياق المتاح:\n{context_str}\n\n"
                     f"سؤال المستخدم: {request.message}"
                 )
                 resp = model_instance.generate_content(full_prompt)
-                
+
                 # حفظ المحادثة في ChromaDB
                 chroma = get_chroma_collection()
                 if chroma:
@@ -281,7 +283,7 @@ async def chat(request: ChatRequest):
                 continue
 
     return ChatResponse(
-        response="الخدمة تعمل بنجاح، يرجى التأكد من ضبط GOOGLE_API_KEY في إعدادات البيئة.",
+        response="الخدمة تعمل بنجاح، يرجى التأكد من ضبط GOOGLE_API_KEY في إعدادات البيئة لتفعيل الذكاء الاصطناعي.",
         model_used="system",
         sources=[]
     )
@@ -295,3 +297,8 @@ async def health_check():
         "qdrant": "connected" if get_qdrant_client() else "disconnected",
         "chromadb": "connected" if get_chroma_collection() else "disconnected"
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
