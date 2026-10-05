@@ -3,10 +3,10 @@ uvicorn[standard]==0.34.0
 pydantic==2.10.3
 httpx==0.28.1
 
-# Google Gemini
+# Google Gemini (التوليد والتضمين text-embedding-004)
 google-generativeai==0.8.3
 
-# DeepSeek (يستخدم مكتبة OpenAI)
+# DeepSeek (يستخدم واجهة OpenAI)
 openai==1.57.4
 
 # Qdrant Vector DB
@@ -17,4 +17,3 @@ chromadb==0.5.23
 
 # أدوات مساعدة
 python-dotenv==1.0.1
-tiktoken==0.8.0
