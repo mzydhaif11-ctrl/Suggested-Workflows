@@ -1,52 +1,115 @@
-def get_embedding(text: str) -> list:
-    """توليد متجهات النص باستخدام نموذج Gemini text-embedding-004"""
-    if not GOOGLE_API_KEY:
-        return []
+import os
+import json
+from typing import Optional, List
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import google.generativeai as genai
+from openai import OpenAI
+from qdrant_client import QdrantClient
+import chromadb
+from chromadb.utils import embedding_functions
+
+# إعدادات البيئة
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+CHROMA_URL = os.getenv("CHROMA_URL")
+CHROMA_API_KEY = os.getenv("CHROMA_API_KEY")
+CHROMA_TENANT = os.getenv("CHROMA_TENANT")
+
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+else:
+    gemini_model = None
+
+deepseek_client = None
+if DEEPSEEK_API_KEY:
+    deepseek_client = OpenAI(
+        api_key=DEEPSEEK_API_KEY,
+        base_url="https://api.deepseek.com"
+    )
+
+def get_qdrant_client():
     try:
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_query"
-        )
-        return result["embedding"]
+        if QDRANT_API_KEY:
+            return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+        return QdrantClient(url=QDRANT_URL)
     except Exception as e:
-        print(f"❌ خطأ في توليد التضمين: {e}")
-        return []
+        print(f"خطأ Qdrant: {e}")
+        return None
 
-def retrieve_context(query: str, top_k: int = 3) -> list:
-    """استرجاع السياق الموحد من Qdrant + ChromaDB"""
-    contexts = []
-    
-    # توليد المتجهات مرة واحدة للبحث في Qdrant
-    query_vector = get_embedding(query)
-
-    # 1. استرجاع من Qdrant عبر المتجهات
-    qdrant = get_qdrant_client()
-    if qdrant and query_vector:
-        try:
-            results = qdrant.search(
-                collection_name="documents",
-                query_vector=query_vector,  # تمرير المتجه المحسوب
-                limit=top_k
+def get_chroma_collection():
+    try:
+        gemini_ef = None
+        if GOOGLE_API_KEY:
+            gemini_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
+                api_key=GOOGLE_API_KEY,
+                model_name="models/text-embedding-004"
             )
-            for hit in results:
-                if hit.payload and "content" in hit.payload:
-                    contexts.append(hit.payload["content"])
-        except Exception as e:
-            print(f"⚠️ فشل الاسترجاع من Qdrant: {e}")
 
-    # 2. استرجاع من ChromaDB (تتكفل بدوال التضمين تلقائياً عبر gemini_ef)
-    collection = get_chroma_collection()
-    if collection:
-        try:
-            results = collection.query(
-                query_texts=[query],
-                n_results=top_k
-            )
-            if results and results.get("documents") and results["documents"][0]:
-                for doc in results["documents"][0]:
-                    contexts.append(doc)
-        except Exception as e:
-            print(f"⚠️ فشل الاسترجاع من ChromaDB: {e}")
+        if CHROMA_URL and CHROMA_API_KEY:
+            connect_kwargs = {
+                "host": CHROMA_URL,
+                "headers": {"Authorization": f"Bearer {CHROMA_API_KEY}"}
+            }
+            if CHROMA_TENANT:
+                connect_kwargs["tenant"] = CHROMA_TENANT
+                connect_kwargs["database"] = "default_database"
+            client = chromadb.HttpClient(**connect_kwargs)
+        else:
+            client = chromadb.Client()
 
-    return contexts
+        return client.get_or_create_collection(
+            name="mowjat_advisor_memory",
+            embedding_function=gemini_ef
+        )
+    except Exception as e:
+        print(f"خطأ ChromaDB: {e}")
+        return None
+
+# ──────────────────────────────────────────────
+# تعريف التطبيق باسم app (هذا السطر هو سبب الخطأ)
+# ──────────────────────────────────────────────
+app = FastAPI(title="موجة البيان", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class ChatRequest(BaseModel):
+    message: str
+    model: Optional[str] = "auto"
+
+class ChatResponse(BaseModel):
+    response: str
+    model_used: str
+    sources: List[str] = []
+
+@app.get("/")
+@app.head("/")
+async def root():
+    return {"status": "ok", "service": "موجة البيان"}
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    return ChatResponse(
+        response=f"تم استلام رسالتك: {request.message}",
+        model_used=request.model or "gemini",
+        sources=[]
+    )
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "ok",
+        "qdrant": "connected" if get_qdrant_client() else "disconnected",
+        "chromadb": "connected" if get_chroma_collection() else "disconnected"
+    }
