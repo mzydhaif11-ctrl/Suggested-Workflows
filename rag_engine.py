@@ -10,8 +10,10 @@ from typing import List, Dict, Any, Optional
 
 try:
     import chromadb
+    from chromadb.utils import embedding_functions
 except ImportError:
     chromadb = None
+    embedding_functions = None
 
 PAGES_DIR = os.path.join(os.path.dirname(__file__), "pages")
 
@@ -23,20 +25,21 @@ class GroundedRAGEngine:
         self.chroma_client = None
         self.collection = None
         
-        # 1. تهيئة الاتصال بذاكرة ChromaDB
+        # 1. تهيئة الاتصال بذاكرة ChromaDB باستخدام تضمين Gemini
         self._init_chroma()
         
-        # 2. فهرسة الوثائق المحلية عبر BM25
+        # 2. فهرسة الملفات المحلية بالبحث النصي
         self.index_documents()
 
     def _init_chroma(self):
-        """إنشاء اتصال آمن مع سحابة ChromaDB باستخدام متغيرات البيئة"""
-        if not chromadb:
+        """إنشاء اتصال آمن مع سحابة ChromaDB وربطها بنموذج text-embedding-004"""
+        if not chromadb or not embedding_functions:
             return
 
         chroma_url = os.environ.get("CHROMA_URL")
         chroma_api_key = os.environ.get("CHROMA_API_KEY")
         chroma_tenant = os.environ.get("CHROMA_TENANT")
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
         if chroma_url and chroma_api_key:
             try:
@@ -49,10 +52,22 @@ class GroundedRAGEngine:
                     connect_kwargs["database"] = "default_database"
 
                 self.chroma_client = chromadb.HttpClient(**connect_kwargs)
-                self.collection = self.chroma_client.get_or_create_collection(name="mowjat_advisor_memory")
-                print("تم الاتصال بذاكرة ChromaDB Cloud بنجاح.")
+
+                # إعداد دالة التضمين الرسمية من Google Gemini
+                gemini_ef = None
+                if gemini_api_key:
+                    gemini_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
+                        api_key=gemini_api_key,
+                        model_name="models/text-embedding-004"
+                    )
+
+                self.collection = self.chroma_client.get_or_create_collection(
+                    name="mowjat_advisor_memory",
+                    embedding_function=gemini_ef
+                )
+                print(" تم تفعيل ذاكرة ChromaDB بنموذج Gemini text-embedding-004 بنجاح.")
             except Exception as e:
-                print(f"تعذر الاتصال بـ ChromaDB: {e}")
+                print(f" تعذر إعداد ChromaDB مع تضمين Gemini: {e}")
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"[a-zA-Z0-9_\u0600-\u06FF]+", text.lower())
@@ -103,6 +118,7 @@ class GroundedRAGEngine:
             self.avg_doc_len = total_tokens / len(self.documents) or 1.0
 
     def _search_chroma_memory(self, query: str, n_results: int = 2) -> List[str]:
+        """استرجاع المحادثات السابقة دلالياً باستخدام تضمين text-embedding-004"""
         if not self.collection:
             return []
         try:
@@ -113,10 +129,11 @@ class GroundedRAGEngine:
             if results and results.get("documents") and results["documents"][0]:
                 return results["documents"][0]
         except Exception as e:
-            print(f"خطأ أثناء استرجاع الذاكرة من Chroma: {e}")
+            print(f"خطأ أثناء استرجاع الذاكرة: {e}")
         return []
 
     def _save_to_chroma_memory(self, query: str, answer: str):
+        """تخزين التفاعل في ChromaDB وتوليد المتجهات تلقائياً عبر Gemini"""
         if not self.collection:
             return
         try:
@@ -128,7 +145,7 @@ class GroundedRAGEngine:
                 metadatas=[{"type": "chat_memory", "timestamp": str(time.time())}]
             )
         except Exception as e:
-            print(f"خطأ أثناء الحفظ في Chroma: {e}")
+            print(f"خطأ أثناء الحفظ في الذاكرة: {e}")
 
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         query_tokens = self._tokenize(query)
@@ -202,11 +219,7 @@ class GroundedRAGEngine:
 
     def answer_query(self, query: str, gemini_api_key: Optional[str] = None) -> Dict[str, Any]:
         api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
-        
-        # 1. البحث في المستندات المحلية
         retrieved_docs = self.search(query, top_k=3)
-        
-        # 2. استرجاع السجلات السابقة من ChromaDB
         past_memories = self._search_chroma_memory(query, n_results=2)
 
         if api_key:
@@ -233,7 +246,6 @@ class GroundedRAGEngine:
             
             user_content = f"السياق:\n{combined_context}\n\nسؤال المستخدم: {query}" if combined_context else f"سؤال المستخدم: {query}"
 
-            # نماذج Gemini المستهدفة
             models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
             for model_name in models_to_try:
                 api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
@@ -261,7 +273,6 @@ class GroundedRAGEngine:
                         res_data = json.loads(resp.read().decode("utf-8"))
                         answer_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
                         
-                        # حفظ المحادثة في ChromaDB
                         self._save_to_chroma_memory(query, answer_text)
 
                         return {
@@ -277,7 +288,6 @@ class GroundedRAGEngine:
                     print(f"خطأ أثناء الاتصال بنموذج {model_name}: {e}")
                     continue
 
-        # رد بديل في حال عدم وجود مفتاح API أو فشل الاتصال بالنموذج
         if not retrieved_docs:
             return {
                 "query": query,
