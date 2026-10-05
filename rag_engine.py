@@ -4,6 +4,7 @@ import math
 import json
 import time
 import urllib.request
+import urllib.error
 from collections import Counter
 from typing import List, Dict, Any, Optional
 
@@ -18,17 +19,18 @@ class GroundedRAGEngine:
     def __init__(self, pages_dir: str = PAGES_DIR):
         self.pages_dir = pages_dir
         self.documents = []
+        self.avg_doc_len = 1.0
         self.chroma_client = None
         self.collection = None
         
-        # 1. تهيئة الاتصال بذاكرة ChromaDB السحابية
+        # 1. تهيئة الاتصال بذاكرة ChromaDB
         self._init_chroma()
         
-        # 2. فهرسة الملفات المحلية كمرجع أساسي واحتياطي
+        # 2. فهرسة الوثائق المحلية عبر BM25
         self.index_documents()
 
     def _init_chroma(self):
-        """إنشاء اتصال آمن مع سحابة ChromaDB باستخدام متغيرات Render"""
+        """إنشاء اتصال آمن مع سحابة ChromaDB باستخدام متغيرات البيئة"""
         if not chromadb:
             return
 
@@ -48,9 +50,9 @@ class GroundedRAGEngine:
 
                 self.chroma_client = chromadb.HttpClient(**connect_kwargs)
                 self.collection = self.chroma_client.get_or_create_collection(name="mowjat_advisor_memory")
-                print(" تم تفعيل ذاكرة ChromaDB Cloud بنجاح.")
+                print("تم الاتصال بذاكرة ChromaDB Cloud بنجاح.")
             except Exception as e:
-                print(f" تعذر الاتصال بـ ChromaDB: {e}")
+                print(f"تعذر الاتصال بـ ChromaDB: {e}")
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"[a-zA-Z0-9_\u0600-\u06FF]+", text.lower())
@@ -94,10 +96,13 @@ class GroundedRAGEngine:
                     "token_count": len(tokens)
                 })
             except Exception as e:
-                print(f"Error indexing {filename}: {e}")
+                print(f"خطأ أثناء فهرسة الملف {filename}: {e}")
+
+        if self.documents:
+            total_tokens = sum(doc["token_count"] for doc in self.documents)
+            self.avg_doc_len = total_tokens / len(self.documents) or 1.0
 
     def _search_chroma_memory(self, query: str, n_results: int = 2) -> List[str]:
-        """استرجاع المعلومات والذاكرة السابقة ذات الصلة من ChromaDB"""
         if not self.collection:
             return []
         try:
@@ -108,11 +113,10 @@ class GroundedRAGEngine:
             if results and results.get("documents") and results["documents"][0]:
                 return results["documents"][0]
         except Exception as e:
-            print(f"Chroma memory query error: {e}")
+            print(f"خطأ أثناء استرجاع الذاكرة من Chroma: {e}")
         return []
 
     def _save_to_chroma_memory(self, query: str, answer: str):
-        """حفظ السؤال والإجابة في سحابة ChromaDB لتصبح ذاكرة للمرات القادمة"""
         if not self.collection:
             return
         try:
@@ -124,7 +128,7 @@ class GroundedRAGEngine:
                 metadatas=[{"type": "chat_memory", "timestamp": str(time.time())}]
             )
         except Exception as e:
-            print(f"Chroma memory save error: {e}")
+            print(f"خطأ أثناء الحفظ في Chroma: {e}")
 
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         query_tokens = self._tokenize(query)
@@ -156,8 +160,7 @@ class GroundedRAGEngine:
                     idf = math.log((total_docs - df + 0.5) / (df + 0.5) + 1.0)
                     k1 = 1.2
                     b = 0.75
-                    avg_len = 1200
-                    norm_tf = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (doc_len / avg_len)))
+                    norm_tf = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (doc_len / self.avg_doc_len)))
                     score += idf * norm_tf
 
             if score > 0:
@@ -203,45 +206,47 @@ class GroundedRAGEngine:
         # 1. البحث في المستندات المحلية
         retrieved_docs = self.search(query, top_k=3)
         
-        # 2. استرجاع ذاكرة المحادثات السابقة من سحابة ChromaDB
+        # 2. استرجاع السجلات السابقة من ChromaDB
         past_memories = self._search_chroma_memory(query, n_results=2)
 
         if api_key:
-            context_parts = []
+            context_blocks = []
             if retrieved_docs:
                 doc_context = "\n\n".join([
-                    f"Document: {d['title']}\nURL: {d['url']}\nContent Excerpt:\n{d['excerpt']}"
+                    f"وثيقة: {d['title']}\nالرابط: {d['url']}\nالمقتطف:\n{d['excerpt']}"
                     for d in retrieved_docs
                 ])
-                context_parts.append(f"[Official Documentation Excerpts]:\n{doc_context}")
+                context_blocks.append(f"[مقتطفات التوثيق الرسمي]:\n{doc_context}")
             
             if past_memories:
                 memory_context = "\n---\n".join(past_memories)
-                context_parts.append(f"[Relevant Memory from Past Interactions]:\n{memory_context}")
+                context_blocks.append(f"[سياق من محادثات سابقة]:\n{memory_context}")
 
-            combined_context = "\n\n".join(context_parts)
+            combined_context = "\n\n".join(context_blocks)
 
-            system_msg = (
-                "You are an expert customer support agent for Google Gemini API and Mawjat AlBayan. "
-                "Answer the customer's inquiry in Arabic accurately and helpfully, strictly grounded in the official documentation excerpts provided. "
-                "If relevant context from past memory is provided, use it to ensure conversational continuity. "
-                "Always cite the source document name and include its official URL when referencing documentation."
+            system_instruction = (
+                "أنت مستشار ودعم فني متخصص لمنصة موجة البيان ومكتبات Google Gemini API. "
+                "أجب عن استفسار العميل باللغة العربية بدقة وأسلوب مهني وواضح، معتمداً حصراً على المقتطفات والتوثيق المرفق. "
+                "إذا كان هناك سياق من محادثات سابقة فاستخدمه لربط الحديث. "
+                "اذكر دائماً اسم الوثيقة ورابطها الرسمي عند الإشارة إلى التوثيق."
             )
             
-            if combined_context:
-                prompt = f"Context:\n{combined_context}\n\nCustomer Inquiry: {query}\n\nHelpful response in Arabic:"
-            else:
-                prompt = f"Customer Inquiry: {query}\n\nHelpful response in Arabic:"
+            user_content = f"السياق:\n{combined_context}\n\nسؤال المستخدم: {query}" if combined_context else f"سؤال المستخدم: {query}"
 
-            models_to_try = ["gemini-1.5-flash", "gemini-flash-latest"]
+            # نماذج Gemini المستهدفة
+            models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
             for model_name in models_to_try:
                 api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
                 payload = {
+                    "system_instruction": {
+                        "parts": [{"text": system_instruction}]
+                    },
                     "contents": [{
-                        "parts": [{
-                            "text": f"{system_msg}\n\n{prompt}"
-                        }]
-                    }]
+                        "parts": [{"text": user_content}]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.2
+                    }
                 }
                 try:
                     req = urllib.request.Request(
@@ -249,14 +254,14 @@ class GroundedRAGEngine:
                         data=json.dumps(payload).encode("utf-8"),
                         headers={
                             "Content-Type": "application/json",
-                            "X-goog-api-key": api_key
+                            "x-goog-api-key": api_key
                         }
                     )
-                    with urllib.request.urlopen(req, timeout=12) as resp:
+                    with urllib.request.urlopen(req, timeout=15) as resp:
                         res_data = json.loads(resp.read().decode("utf-8"))
                         answer_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
                         
-                        # 3. حفظ هذا الحوار فوراً في سحابة ChromaDB ليتذكره في المستقبل
+                        # حفظ المحادثة في ChromaDB
                         self._save_to_chroma_memory(query, answer_text)
 
                         return {
@@ -264,26 +269,25 @@ class GroundedRAGEngine:
                             "answer": answer_text,
                             "sources": retrieved_docs
                         }
-                except Exception:
+                except urllib.error.HTTPError as http_err:
+                    error_details = http_err.read().decode("utf-8", errors="ignore")
+                    print(f"فشل الطلب مع {model_name} (HTTP {http_err.code}): {error_details}")
+                    continue
+                except Exception as e:
+                    print(f"خطأ أثناء الاتصال بنموذج {model_name}: {e}")
                     continue
 
+        # رد بديل في حال عدم وجود مفتاح API أو فشل الاتصال بالنموذج
         if not retrieved_docs:
             return {
                 "query": query,
-                "answer": "مرحباً بك في منصة موجة البيان للدعم الفني. يرجى التأكد من ضبط مفتاح GEMINI_API_KEY للحصول على إجابات ذكية وفورية.",
+                "answer": "مرحباً بك في موجة البيان. يرجى التأكد من ضبط متغير البيئة GEMINI_API_KEY للحصول على إجابات ذكية.",
                 "sources": []
             }
 
         top_doc = retrieved_docs[0]
-        answer_parts = [
-            f"بناءً على التوثيق الرسمي لـ Google Gemini API في قسم {top_doc['title']}:\n",
-            f"الملخص المستند للتوثيق:\n{top_doc['excerpt']}\n"
-        ]
-        if len(retrieved_docs) > 1:
-            answer_parts.append(f"\nموضوعات ذات صلة: يمكنك أيضاً الرجوع إلى قسم {retrieved_docs[1]['title']} للمزيد من التفاصيل.")
-
         return {
             "query": query,
-            "answer": "\n".join(answer_parts),
+            "answer": f"بناءً على التوثيق في {top_doc['title']}:\n{top_doc['excerpt']}\n\nالمصدر: {top_doc['url']}",
             "sources": retrieved_docs
         }
