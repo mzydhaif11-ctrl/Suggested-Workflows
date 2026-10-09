@@ -1,304 +1,246 @@
+
 import os
-import json
-from pathlib import Path
-from typing import Optional, List
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
-from pydantic import BaseModel
+import logging
+from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import google.generativeai as genai
-from openai import OpenAI
-from qdrant_client import QdrantClient
-import chromadb
-from chromadb.utils import embedding_functions
+from adaptive_memory_engine import AdaptiveMemoryEngine
 
-# ──────────────────────────────────────────────
-# متغيرات البيئة
-# ──────────────────────────────────────────────
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-
-CHROMA_URL = os.getenv("CHROMA_URL")
-CHROMA_API_KEY = os.getenv("CHROMA_API_KEY")
-CHROMA_TENANT = os.getenv("CHROMA_TENANT")
-
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-
-deepseek_client = None
-if DEEPSEEK_API_KEY:
-    deepseek_client = OpenAI(
-        api_key=DEEPSEEK_API_KEY,
-        base_url="https://api.deepseek.com"
-    )
-
-# ──────────────────────────────────────────────
-# التطبيق (FastAPI)
-# ──────────────────────────────────────────────
-app = FastAPI(title="موجة البيان", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+# ─── Logging Setup ───────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
+logger = logging.getLogger(__name__)
 
-# ──────────────────────────────────────────────
-# قواعد البيانات
-# ──────────────────────────────────────────────
-def get_embedding(text: str) -> list:
-    if not GOOGLE_API_KEY:
-        return []
+
+# ─── Configuration ───────────────────────────────────────────────
+class Config:
+    """Centralized configuration from environment variables."""
+
+    def __init__(self):
+        self.api_key: str = os.environ.get("GOOGLE_API_KEY", "")
+        self.model_name: str = os.environ.get("MODEL_NAME", "gemini-2.5-flash")
+        self.embedding_model: str = os.environ.get(
+            "EMBEDDING_MODEL", "text-embedding-004"
+        )
+        self.max_tokens: int = int(os.environ.get("MAX_TOKENS", "1024"))
+        self.temperature: float = float(os.environ.get("TEMPERATURE", "0.7"))
+        self.max_workers: int = int(os.environ.get("MAX_WORKERS", "5"))
+        self.memory_db_path: str = os.environ.get(
+            "MEMORY_DB_PATH", "mowjn_memory.db"
+        )
+        self.decay_rate: float = float(os.environ.get("DECAY_RATE", "0.01"))
+        self.similarity_threshold: float = float(
+            os.environ.get("SIMILARITY_THRESHOLD", "0.5")
+        )
+        self.top_k_memories: int = int(os.environ.get("TOP_K_MEMORIES", "3"))
+
+        if not self.api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY is not set. Set it via os.environ or a .env file."
+            )
+
+
+config = Config()
+
+
+# ─── Client Initialization ──────────────────────────────────────
+def init_client() -> None:
+    """Initialize the Gemini client with API key."""
     try:
-        res = genai.embed_content(
-            model="models/text-embedding-004",
+        genai.configure(api_key=config.api_key)
+        logger.info(f"Gemini client initialized — model: {config.model_name}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Gemini client: {e}")
+        raise
+
+
+# ─── Embedding Helper ───────────────────────────────────────────
+def get_embedding(text: str) -> list[float]:
+    """Generate an embedding vector for the given text using Gemini."""
+    try:
+        result = genai.embed_content(
+            model=config.embedding_model,
             content=text,
-            task_type="retrieval_query"
+            task_type="retrieval_document",
         )
-        return res.get("embedding", [])
-    except Exception:
+        return result["embedding"]
+    except Exception as e:
+        logger.error(f"Embedding failed for '{text[:50]}...': {e}")
         return []
 
-def get_qdrant_client():
-    try:
-        if QDRANT_API_KEY:
-            return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        return QdrantClient(url=QDRANT_URL)
-    except Exception:
-        return None
 
-def get_chroma_collection():
-    try:
-        gemini_ef = None
-        if GOOGLE_API_KEY:
-            gemini_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
-                api_key=GOOGLE_API_KEY,
-                model_name="models/text-embedding-004"
-            )
+# ─── Memory Engine Singleton ────────────────────────────────────
+memory_engine: Optional[AdaptiveMemoryEngine] = None
 
-        if CHROMA_URL and CHROMA_API_KEY:
-            connect_kwargs = {
-                "host": CHROMA_URL,
-                "headers": {"Authorization": f"Bearer {CHROMA_API_KEY}"}
-            }
-            if CHROMA_TENANT:
-                connect_kwargs["tenant"] = CHROMA_TENANT
-                connect_kwargs["database"] = "default_database"
-            client = chromadb.HttpClient(**connect_kwargs)
-        else:
-            client = chromadb.Client()
 
-        return client.get_or_create_collection(
-            name="mowjat_advisor_memory",
-            embedding_function=gemini_ef
-        )
-    except Exception:
-        return None
-
-def retrieve_context(query: str, top_k: int = 3) -> list:
-    contexts = []
-    qdrant = get_qdrant_client()
-    query_vector = get_embedding(query)
-    if qdrant and query_vector:
-        try:
-            results = qdrant.search(
-                collection_name="documents",
-                query_vector=query_vector,
-                limit=top_k
-            )
-            for hit in results:
-                if hit.payload and "content" in hit.payload:
-                    contexts.append(hit.payload["content"])
-        except Exception:
-            pass
-
-    chroma = get_chroma_collection()
-    if chroma:
-        try:
-            res = chroma.query(query_texts=[query], n_results=top_k)
-            if res and res.get("documents") and res["documents"][0]:
-                for doc in res["documents"][0]:
-                    contexts.append(doc)
-        except Exception:
-            pass
-
-    return contexts
-
-# ──────────────────────────────────────────────
-# موديلات الطلب والرد
-# ──────────────────────────────────────────────
-class ChatRequest(BaseModel):
-    message: str
-    model: Optional[str] = "auto"
-
-class ChatResponse(BaseModel):
-    response: str
-    model_used: str
-    sources: List[str] = []
-
-# ──────────────────────────────────────────────
-# الصفحة الرئيسية (تشغيل index.html مباشرة عند فتح الرابط)
-# ──────────────────────────────────────────────
-@app.get("/")
-@app.head("/")
-async def serve_index():
-    index_file = Path("index.html")
-    # إذا كان ملف index.html موجوداً في المستودع يتم عرضه مباشرة
-    if index_file.is_file():
-        return FileResponse(index_file)
-    
-    # واجهة افتراضية احتياطية في حال لم ترفع index.html بعد
-    return HTMLResponse("""
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>منصة موجة البيان</title>
-        <style>
-            * { box-sizing: border-box; }
-            body { font-family: system-ui, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 12px; }
-            .chat-card { width: 100%; max-width: 480px; height: 90vh; background: #1e293b; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-            .header { background: #2563eb; padding: 18px; text-align: center; font-weight: bold; font-size: 1.2rem; }
-            .messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-            .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 0.95rem; word-break: break-word; }
-            .user { background: #3b82f6; align-self: flex-start; }
-            .bot { background: #334155; align-self: flex-end; }
-            .input-box { display: flex; padding: 12px; background: #0f172a; gap: 8px; }
-            input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; font-size: 1rem; }
-            button { background: #2563eb; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
-        </style>
-    </head>
-    <body>
-        <div class="chat-card">
-            <div class="header">مستشار موجة البيان</div>
-            <div class="messages" id="chat">
-                <div class="msg bot">مرحباً بك في منصة موجة البيان! كيف يمكنني مساعدتك؟</div>
-            </div>
-            <div class="input-box">
-                <input type="text" id="userInput" placeholder="اكتب سؤالك هنا..." onkeydown="if(event.key==='Enter') send()">
-                <button onclick="send()">إرسال</button>
-            </div>
-        </div>
-        <script>
-            async function send() {
-                const input = document.getElementById('userInput');
-                const chat = document.getElementById('chat');
-                const text = input.value.trim();
-                if (!text) return;
-                chat.innerHTML += `<div class="msg user">${text}</div>`;
-                input.value = '';
-                chat.scrollTop = chat.scrollHeight;
-
-                const botMsg = document.createElement('div');
-                botMsg.className = 'msg bot';
-                botMsg.innerText = 'جاري التفكير...';
-                chat.appendChild(botMsg);
-                chat.scrollTop = chat.scrollHeight;
-
-                try {
-                    const res = await fetch('/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: text, model: 'auto' })
-                    });
-                    const data = await res.json();
-                    botMsg.innerText = data.response;
-                } catch(e) {
-                    botMsg.innerText = 'تعذر الاتصال بالخادم.';
-                }
-                chat.scrollTop = chat.scrollHeight;
-            }
-        </script>
-    </body>
-    </html>
-    """)
-
-# ──────────────────────────────────────────────
-# نقطة نهاية المحادثة (API)
-# ──────────────────────────────────────────────
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    context = retrieve_context(request.message)
-    context_str = "\n".join([f"- {c}" for c in context]) if context else "لا توجد مستندات إضافية."
-
-    selected_model = request.model or "auto"
-    if selected_model == "auto":
-        selected_model = "deepseek" if any(w in request.message.lower() for w in ["كود", "code", "bug", "دالة"]) else "gemini"
-
-    # 1. التشغيل عبر DeepSeek
-    if selected_model == "deepseek" and deepseek_client:
-        try:
-            resp = deepseek_client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
-                    {"role": "system", "content": "أنت مساعد ذكي لمنصة موجة البيان. أجب بالعربية بدقة."},
-                    {"role": "user", "content": f"السياق:\n{context_str}\n\nالسؤال: {request.message}"}
-                ]
-            )
-            return ChatResponse(
-                response=resp.choices[0].message.content,
-                model_used="deepseek-chat",
-                sources=context[:3]
-            )
-        except Exception:
-            pass
-
-    # 2. التشغيل عبر Gemini
-    if GOOGLE_API_KEY:
-        models_to_try = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"]
-        for m_name in models_to_try:
-            try:
-                model_instance = genai.GenerativeModel(m_name)
-                full_prompt = (
-                    f"أنت مستشار الدعم الفني لمنصة موجة البيان.\n"
-                    f"السياق المتاح:\n{context_str}\n\n"
-                    f"سؤال المستخدم: {request.message}"
-                )
-                resp = model_instance.generate_content(full_prompt)
-
-                # حفظ المحادثة في ChromaDB
-                chroma = get_chroma_collection()
-                if chroma:
-                    try:
-                        mem_id = f"mem_{int(os.times().elapsed * 1000)}"
-                        chroma.add(
-                            ids=[mem_id],
-                            documents=[f"سؤال: {request.message} | إجابة: {resp.text}"]
-                        )
-                    except Exception:
-                        pass
-
-                return ChatResponse(
-                    response=resp.text,
-                    model_used=m_name,
-                    sources=context[:3]
-                )
-            except Exception:
-                continue
-
-    return ChatResponse(
-        response="الخدمة تعمل بنجاح، يرجى التأكد من ضبط GOOGLE_API_KEY في إعدادات البيئة لتفعيل الذكاء الاصطناعي.",
-        model_used="system",
-        sources=[]
+def init_memory() -> AdaptiveMemoryEngine:
+    """Initialize the adaptive memory engine with SQLite persistence."""
+    global memory_engine
+    memory_engine = AdaptiveMemoryEngine(
+        decay_rate=config.decay_rate,
+        similarity_threshold=config.similarity_threshold,
+        db_path=config.memory_db_path,
     )
+    stats = memory_engine.get_stats()
+    logger.info(
+        f"Memory engine ready — stored memories: {stats['total_memories']}"
+    )
+    return memory_engine
 
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "ok",
-        "gemini": "configured" if GOOGLE_API_KEY else "missing_key",
-        "deepseek": "configured" if DEEPSEEK_API_KEY else "missing_key",
-        "qdrant": "connected" if get_qdrant_client() else "disconnected",
-        "chromadb": "connected" if get_chroma_collection() else "disconnected"
-    }
 
+def close_memory() -> None:
+    """Close the memory engine database connection."""
+    global memory_engine
+    if memory_engine:
+        memory_engine.close()
+        logger.info("Memory engine closed.")
+
+
+# ─── Context Enrichment ─────────────────────────────────────────
+def enrich_prompt_with_memory(prompt: str) -> tuple[str, list[dict]]:
+    """Retrieve relevant memories and prepend them to the prompt as context."""
+    if not memory_engine:
+        return prompt, []
+
+    query_emb = get_embedding(prompt)
+    if not query_emb:
+        return prompt, []
+
+    relevant = memory_engine.retrieve(query_emb, top_k=config.top_k_memories)
+    if not relevant:
+        return prompt, []
+
+    # Build context block from retrieved memories
+    context_parts = []
+    for mem in relevant:
+        context_parts.append(f"- {mem['content']} (score: {mem['final_score']})")
+
+    context_block = "\n\n📋 سياق سابق مرتبط:\n" + "\n".join(context_parts)
+    enriched = context_block + "\n\n---\n" + prompt
+
+    logger.info(f"Enriched prompt with {len(relevant)} relevant memories")
+    return enriched, relevant
+
+
+# ─── Core Functions ──────────────────────────────────────────────
+def generate_response(prompt: str, system_instruction: Optional[str] = None) -> dict:
+    """
+    Generate a response from Gemini with memory-augmented context.
+
+    :return: dict with 'response', 'used_memories', and 'saved_to_memory' flags
+    """
+    if not prompt or not prompt.strip():
+        logger.warning("Received empty prompt, returning early.")
+        return {"response": "", "used_memories": [], "saved_to_memory": False}
+
+    try:
+        # Step 1: Enrich prompt with relevant memories
+        enriched_prompt, used_memories = enrich_prompt_with_memory(prompt)
+
+        # Step 2: Generate response
+        model = genai.GenerativeModel(
+            model_name=config.model_name,
+            system_instruction=system_instruction,
+        )
+        response = model.generate_content(
+            enriched_prompt,
+            generation_config={
+                "max_output_tokens": config.max_tokens,
+                "temperature": config.temperature,
+            },
+        )
+        result = response.text.strip()
+        logger.info(f"Generated response (length={len(result)} chars)")
+
+        # Step 3: Save prompt + response to memory
+        saved = _save_conversation_turn(prompt, result)
+
+        return {
+            "response": result,
+            "used_memories": used_memories,
+            "saved_to_memory": saved,
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating response for prompt '{prompt[:50]}...': {e}")
+        return {
+            "response": f"[خطأ في التوليد: {e}]",
+            "used_memories": [],
+            "saved_to_memory": False,
+        }
+
+
+def _save_conversation_turn(prompt: str, response: str) -> bool:
+    """Save a conversation turn to the memory store."""
+    if not memory_engine:
+        return False
+
+    import uuid
+
+    combined = f"{prompt}\n{response}"
+    emb = get_embedding(combined)
+    if not emb:
+        return False
+
+    mem_id = f"CONV_{uuid.uuid4().hex[:12]}"
+    success = memory_engine.add_memory(mem_id, combined, emb)
+    if success:
+        logger.info(f"Conversation turn saved as {mem_id}")
+    return success
+
+
+def process_batch(prompts: list[str], system_instruction: Optional[str] = None) -> list[dict]:
+    """Process a batch of prompts concurrently with memory support."""
+    results: list[dict] = []
+
+    with ThreadPoolExecutor(max_workers=config.max_workers) as executor:
+        future_to_idx = {
+            executor.submit(generate_response, p, system_instruction): i
+            for i, p in enumerate(prompts)
+        }
+
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                data = future.result()
+                results.append({"index": idx, "prompt": prompts[idx], **data})
+            except Exception as e:
+                logger.error(f"Batch item {idx} failed: {e}")
+                results.append({
+                    "index": idx,
+                    "prompt": prompts[idx],
+                    "response": f"[خطأ: {e}]",
+                    "used_memories": [],
+                    "saved_to_memory": False,
+                })
+
+    results.sort(key=lambda x: x["index"])
+    logger.info(f"Batch complete — processed {len(results)}/{len(prompts)} items")
+    return results
+
+
+# ─── Main Entry Point ───────────────────────────────────────────
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    init_client()
+    init_memory()
+
+    try:
+        sample_prompts = [
+            "اكتب مقدمة عن الذكاء الاصطناعي",
+            "ما هي فوائد التعلم الآلي؟",
+            "شرح مختصر لمفهوم NLP",
+        ]
+
+        outputs = process_batch(sample_prompts)
+        for item in outputs:
+            print(f"\n{'='*60}")
+            print(f"Prompt: {item['prompt']}")
+            print(f"Response: {item['response']}")
+            print(f"Used memories: {len(item['used_memories'])}")
+            print(f"Saved to memory: {item['saved_to_memory']}")
+    finally:
+        close_memory()
