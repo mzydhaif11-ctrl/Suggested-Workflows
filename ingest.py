@@ -4,10 +4,10 @@ from pathlib import Path
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 import chromadb
-import google.generativeai as genai
+from google import genai
 
 # ──────────────────────────────────────────────
-# إعدادات البيئة
+# Environment Settings
 # ──────────────────────────────────────────────
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -17,20 +17,22 @@ CHROMA_URL = os.getenv("CHROMA_URL")
 CHROMA_API_KEY = os.getenv("CHROMA_API_KEY")
 CHROMA_TENANT = os.getenv("CHROMA_TENANT")
 
+# Initialize Gen AI client
+_genai_client = None
 if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+    _genai_client = genai.Client(api_key=GOOGLE_API_KEY)
 else:
-    print("⚠️ تحذير: لم يتم العثور على GOOGLE_API_KEY أو GEMINI_API_KEY")
+    print("Warning: GOOGLE_API_KEY or GEMINI_API_KEY not found")
 
-# حجم القطعة بالرموز
+# Chunk size in characters
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
 
 # ──────────────────────────────────────────────
-# دوال مساعدة
+# Helper Functions
 # ──────────────────────────────────────────────
 def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list:
-    """تقسيم النص إلى قطع متداخلة"""
+    """Split text into overlapping chunks."""
     chunks = []
     start = 0
     while start < len(text):
@@ -41,75 +43,77 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
         start += chunk_size - overlap
     return chunks
 
+
 def get_embedding(text: str) -> list:
-    """إنشاء متجه 768 بعد باستخدام Gemini text-embedding-004"""
+    """Generate 768-dim embedding using Gemini gemini-embedding-2."""
     try:
-        response = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
+        result = _genai_client.models.embed_content(
+            model="gemini-embedding-2",
+            contents=text,
             task_type="retrieval_document"
         )
-        return response["embedding"]
+        return result[0].values[0]
     except Exception as e:
-        print(f"❌ خطأ في إنشاء المتجه: {e}")
+        print(f"Error creating embedding: {e}")
         raise
 
+
 def get_qdrant_client():
-    """الاتصال بـ Qdrant Cloud أو محلياً"""
+    """Connect to Qdrant Cloud or locally."""
     try:
         if QDRANT_API_KEY:
             return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
         return QdrantClient(url=QDRANT_URL)
     except Exception as e:
-        print(f"❌ تعذر الاتصال بـ Qdrant: {e}")
+        print(f"Failed to connect to Qdrant: {e}")
         return None
 
+
 def get_chroma_client():
-    """الاتصال بـ ChromaDB السحابي أو المحلي"""
+    """Connect to ChromaDB cloud or local."""
     try:
         if CHROMA_URL and CHROMA_API_KEY:
             connect_kwargs = {
                 "host": CHROMA_URL,
-                "headers": {"Authorization": f"Bearer {CHROMA_API_KEY}"}
+                "headers": {"Authorization": f"Bearer {chroma_api_key}"}
             }
             if CHROMA_TENANT:
                 connect_kwargs["tenant"] = CHROMA_TENANT
                 connect_kwargs["database"] = "default_database"
-
             return chromadb.HttpClient(**connect_kwargs)
         return chromadb.Client()
     except Exception as e:
-        print(f"❌ تعذر الاتصال بـ ChromaDB: {e}")
+        print(f"Failed to connect to ChromaDB: {e}")
         return None
 
+
 # ──────────────────────────────────────────────
-# الدالة الرئيسية
+# Main Ingestion Function
 # ──────────────────────────────────────────────
 def ingest_documents(docs_dir: str = "./docs"):
-    """استيراد المستندات وتوليد المتجهات إلى Qdrant و ChromaDB"""
+    """Import documents and generate embeddings into Qdrant and ChromaDB."""
     docs_path = Path(docs_dir)
     if not docs_path.exists():
-        # فحص بديل لمجلد pages إن وجد
         alt_path = Path("./pages")
         if alt_path.exists():
             docs_path = alt_path
         else:
-            print(f"⚠️ المجلد {docs_dir} غير موجود — تم إلغاء الفهرسة")
+            print(f"Directory {docs_dir} not found - indexing skipped")
             return
-    
+
     md_files = list(docs_path.glob("*.md"))
     if not md_files:
-        print(f"⚠️ لا توجد ملفات .md داخل {docs_path}")
+        print(f"No .md files found in {docs_path}")
         return
-    
-    print(f"📂 جاري استيراد {len(md_files)} ملف من المسار: {docs_path}...")
-    
+
+    print(f"Importing {len(md_files)} files from: {docs_path}...")
+
     qdrant = get_qdrant_client()
     chroma = get_chroma_client()
-    
+
     collection_name = "documents"
-    
-    # تهيئة مجموعة Qdrant بأبعاد 768 المطابقة لـ text-embedding-004
+
+    # Initialize Qdrant collection with 768 dimensions matching gemini-embedding-2
     if qdrant:
         try:
             collections = qdrant.get_collections().collections
@@ -118,36 +122,36 @@ def ingest_documents(docs_dir: str = "./docs"):
                     collection_name=collection_name,
                     vectors_config=VectorParams(size=768, distance=Distance.COSINE)
                 )
-                print("✅ تم إنشاء مجموعة Qdrant بنجاح (الأبعاد: 768).")
+                print("Qdrant collection created successfully (dimensions: 768).")
         except Exception as e:
-            print(f"⚠️ خطأ أثناء تهيئة مجموعة Qdrant: {e}")
-    
-    # تهيئة مجموعة ChromaDB
+            print(f"Error initializing Qdrant collection: {e}")
+
+    # Initialize ChromaDB collection
     chroma_collection = None
     if chroma:
         try:
             chroma_collection = chroma.get_or_create_collection(name=collection_name)
-            print("✅ تم تجهيز مجموعة ChromaDB بنجاح.")
+            print("ChromaDB collection ready.")
         except Exception as e:
-            print(f"⚠️ خطأ أثناء تهيئة مجموعة ChromaDB: {e}")
-    
+            print(f"Error initializing ChromaDB collection: {e}")
+
     point_id = 0
     for md_file in md_files:
         try:
             text = md_file.read_text(encoding="utf-8")
             filename = md_file.name
-            
+
             chunks = chunk_text(text)
-            print(f"  📄 معالجة {filename}: تم تقسيمه إلى {len(chunks)} مقطع")
-            
+            print(f"  Processing {filename}: split into {len(chunks)} chunks")
+
             for i, chunk in enumerate(chunks):
                 if not chunk.strip():
                     continue
-                
+
                 try:
                     embedding = get_embedding(chunk)
-                    
-                    # الرفع إلى Qdrant
+
+                    # Upload to Qdrant
                     if qdrant:
                         qdrant.upsert(
                             collection_name=collection_name,
@@ -161,8 +165,8 @@ def ingest_documents(docs_dir: str = "./docs"):
                                 }
                             )]
                         )
-                    
-                    # الرفع إلى ChromaDB
+
+                    # Upload to ChromaDB
                     if chroma_collection:
                         chroma_collection.add(
                             ids=[f"{filename}_{i}"],
@@ -170,21 +174,22 @@ def ingest_documents(docs_dir: str = "./docs"):
                             metadatas=[{"source": filename, "chunk_index": i}],
                             embeddings=[embedding]
                         )
-                    
+
                     point_id += 1
-                    
+
                 except Exception as e:
-                    print(f"  ⚠️ خطأ في معالجة القطعة {i} من الملف {filename}: {e}")
+                    print(f"  Error processing chunk {i} from {filename}: {e}")
                     continue
-        
+
         except Exception as e:
-            print(f"  ❌ تعذر قراءة الملف {md_file.name}: {e}")
+            print(f"  Failed to read file {md_file.name}: {e}")
             continue
-    
-    print(f"✅ تم الانتهاء بنجاح! تم تضمين ورفع {point_id} مقطع إلى قواعد البيانات.")
+
+    print(f"Done! Embedded and uploaded {point_id} chunks to databases.")
+
 
 # ──────────────────────────────────────────────
-# التشغيل المباشر
+# Direct Execution
 # ──────────────────────────────────────────────
 if __name__ == "__main__":
     docs_directory = os.getenv("DOCS_DIR", "./docs")
