@@ -65,7 +65,7 @@ class AdaptiveMemoryEngine:
 
     def _get_connection(self) -> sqlite3.Connection:
         if self._db is None:
-            self._db = sqlite3.connect(self.db_path)
+            self._db = sqlite3.connect(self.db_path, check_same_thread=False)
             self._db.row_factory = sqlite3.Row
         return self._db
 
