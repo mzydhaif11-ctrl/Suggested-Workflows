@@ -3,8 +3,6 @@ import re
 import math
 import json
 import time
-import urllib.request
-import urllib.error
 from collections import Counter
 from typing import List, Dict, Any, Optional
 
@@ -17,6 +15,7 @@ except ImportError:
 
 PAGES_DIR = os.path.join(os.path.dirname(__file__), "pages")
 
+
 class GroundedRAGEngine:
     def __init__(self, pages_dir: str = PAGES_DIR):
         self.pages_dir = pages_dir
@@ -24,22 +23,36 @@ class GroundedRAGEngine:
         self.avg_doc_len = 1.0
         self.chroma_client = None
         self.collection = None
-        
-        # 1. تهيئة الاتصال بذاكرة ChromaDB باستخدام تضمين Gemini
+        self.genai_client = None
+
+        # 1. Initialize Google Gen AI client
+        self._init_genai()
+
+        # 2. Initialize ChromaDB connection with Gemini embeddings
         self._init_chroma()
-        
-        # 2. فهرسة الملفات المحلية بالبحث النصي
+
+        # 3. Index local files with text search
         self.index_documents()
 
+    def _init_genai(self):
+        """Initialize Google Gen AI SDK client."""
+        try:
+            from google import genai
+            api_key = os.environ.get("GOOGLE_API_KEY", "") or os.environ.get("GEMINI_API_KEY", "")
+            if api_key:
+                self.genai_client = genai.Client(api_key=api_key)
+        except ImportError:
+            pass
+
     def _init_chroma(self):
-        """إنشاء اتصال آمن مع سحابة ChromaDB وربطها بنموذج text-embedding-004"""
+        """Create secure connection to ChromaDB cloud linked with Gemini embeddings."""
         if not chromadb or not embedding_functions:
             return
 
         chroma_url = os.environ.get("CHROMA_URL")
         chroma_api_key = os.environ.get("CHROMA_API_KEY")
         chroma_tenant = os.environ.get("CHROMA_TENANT")
-        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
         if chroma_url and chroma_api_key:
             try:
@@ -53,21 +66,21 @@ class GroundedRAGEngine:
 
                 self.chroma_client = chromadb.HttpClient(**connect_kwargs)
 
-                # إعداد دالة التضمين الرسمية من Google Gemini
+                # Setup official embedding function from Google Gemini
                 gemini_ef = None
                 if gemini_api_key:
                     gemini_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
                         api_key=gemini_api_key,
-                        model_name="models/text-embedding-004"
+                        model_name="gemini-embedding-2"
                     )
 
                 self.collection = self.chroma_client.get_or_create_collection(
                     name="mowjat_advisor_memory",
                     embedding_function=gemini_ef
                 )
-                print(" تم تفعيل ذاكرة ChromaDB بنموذج Gemini text-embedding-004 بنجاح.")
+                print("ChromaDB memory activated with Gemini gemini-embedding-2 successfully.")
             except Exception as e:
-                print(f" تعذر إعداد ChromaDB مع تضمين Gemini: {e}")
+                print(f"Failed to setup ChromaDB with Gemini embeddings: {e}")
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"[a-zA-Z0-9_\u0600-\u06FF]+", text.lower())
@@ -111,14 +124,14 @@ class GroundedRAGEngine:
                     "token_count": len(tokens)
                 })
             except Exception as e:
-                print(f"خطأ أثناء فهرسة الملف {filename}: {e}")
+                print(f"Error indexing file {filename}: {e}")
 
         if self.documents:
             total_tokens = sum(doc["token_count"] for doc in self.documents)
             self.avg_doc_len = total_tokens / len(self.documents) or 1.0
 
     def _search_chroma_memory(self, query: str, n_results: int = 2) -> List[str]:
-        """استرجاع المحادثات السابقة دلالياً باستخدام تضمين text-embedding-004"""
+        """Retrieve past conversations semantically using Gemini embeddings."""
         if not self.collection:
             return []
         try:
@@ -129,23 +142,23 @@ class GroundedRAGEngine:
             if results and results.get("documents") and results["documents"][0]:
                 return results["documents"][0]
         except Exception as e:
-            print(f"خطأ أثناء استرجاع الذاكرة: {e}")
+            print(f"Error retrieving memory: {e}")
         return []
 
     def _save_to_chroma_memory(self, query: str, answer: str):
-        """تخزين التفاعل في ChromaDB وتوليد المتجهات تلقائياً عبر Gemini"""
+        """Store interaction in ChromaDB with auto-generated vectors via Gemini."""
         if not self.collection:
             return
         try:
             mem_id = f"mem_{int(time.time() * 1000)}"
-            text_to_save = f"سؤال المستخدم السابق: {query}\nإجابة المستشار السابقة: {answer}"
+            text_to_save = f"User question: {query}\nAdvisor answer: {answer}"
             self.collection.add(
                 ids=[mem_id],
                 documents=[text_to_save],
                 metadatas=[{"type": "chat_memory", "timestamp": str(time.time())}]
             )
         except Exception as e:
-            print(f"خطأ أثناء الحفظ في الذاكرة: {e}")
+            print(f"Error saving to memory: {e}")
 
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         query_tokens = self._tokenize(query)
@@ -193,7 +206,7 @@ class GroundedRAGEngine:
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
 
-    def _extract_relevant_excerpt(self, content: str, query_tokens: List[str], max_chars: int = 450) -> str:
+    def _extract_relevant_excerpt(self, content: str, query_tokens: list, max_chars: int = 450) -> str:
         paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 35]
         best_p = ""
         best_score = -1
@@ -211,93 +224,73 @@ class GroundedRAGEngine:
             best_p = paragraphs[0]
 
         clean_text = re.sub(r"#+\s*", "", best_p)
-        clean_text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", clean_text)
+        clean_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean_text)
         clean_text = re.sub(r"\s+", " ", clean_text).strip()
         if len(clean_text) > max_chars:
             clean_text = clean_text[:max_chars].rsplit(" ", 1)[0] + "..."
         return clean_text
 
     def answer_query(self, query: str, gemini_api_key: Optional[str] = None) -> Dict[str, Any]:
-        api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
+        api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         retrieved_docs = self.search(query, top_k=3)
         past_memories = self._search_chroma_memory(query, n_results=2)
 
-        if api_key:
+        if api_key and self.genai_client:
             context_blocks = []
             if retrieved_docs:
                 doc_context = "\n\n".join([
-                    f"وثيقة: {d['title']}\nالرابط: {d['url']}\nالمقتطف:\n{d['excerpt']}"
+                    f"Document: {d['title']}\nURL: {d['url']}\nExcerpt:\n{d['excerpt']}"
                     for d in retrieved_docs
                 ])
-                context_blocks.append(f"[مقتطفات التوثيق الرسمي]:\n{doc_context}")
-            
+                context_blocks.append(f"[Official Documentation Excerpts]:\n{doc_context}")
+
             if past_memories:
                 memory_context = "\n---\n".join(past_memories)
-                context_blocks.append(f"[سياق من محادثات سابقة]:\n{memory_context}")
+                context_blocks.append(f"[Context from Past Conversations]:\n{memory_context}")
 
             combined_context = "\n\n".join(context_blocks)
 
             system_instruction = (
-                "أنت مستشار ودعم فني متخصص لمنصة موجة البيان ومكتبات Google Gemini API. "
-                "أجب عن استفسار العميل باللغة العربية بدقة وأسلوب مهني وواضح، معتمداً حصراً على المقتطفات والتوثيق المرفق. "
-                "إذا كان هناك سياق من محادثات سابقة فاستخدمه لربط الحديث. "
-                "اذكر دائماً اسم الوثيقة ورابطها الرسمي عند الإشارة إلى التوثيق."
+                "You are a specialized consultant and technical support for Mowjn AI-Bayan platform "
+                "and Google Gemini API libraries. Answer customer inquiries in Arabic with precision, "
+                "professional style, and clarity, relying exclusively on the provided excerpts and documentation. "
+                "If there is context from past conversations, use it to connect the discussion. "
+                "Always mention the document name and its official URL when referencing documentation."
             )
-            
-            user_content = f"السياق:\n{combined_context}\n\nسؤال المستخدم: {query}" if combined_context else f"سؤال المستخدم: {query}"
 
-            models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
-            for model_name in models_to_try:
-                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
-                payload = {
-                    "system_instruction": {
-                        "parts": [{"text": system_instruction}]
-                    },
-                    "contents": [{
-                        "parts": [{"text": user_content}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.2
+            user_content = f"Context:\n{combined_context}\n\nUser Question: {query}" if combined_context else f"User Question: {query}"
+
+            try:
+                response = self.genai_client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=user_content,
+                    config={
+                        "system_instruction": system_instruction,
+                        "temperature": 0.2,
                     }
-                }
-                try:
-                    req = urllib.request.Request(
-                        api_url,
-                        data=json.dumps(payload).encode("utf-8"),
-                        headers={
-                            "Content-Type": "application/json",
-                            "x-goog-api-key": api_key
-                        }
-                    )
-                    with urllib.request.urlopen(req, timeout=15) as resp:
-                        res_data = json.loads(resp.read().decode("utf-8"))
-                        answer_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                        
-                        self._save_to_chroma_memory(query, answer_text)
+                )
+                answer_text = response.text.strip()
 
-                        return {
-                            "query": query,
-                            "answer": answer_text,
-                            "sources": retrieved_docs
-                        }
-                except urllib.error.HTTPError as http_err:
-                    error_details = http_err.read().decode("utf-8", errors="ignore")
-                    print(f"فشل الطلب مع {model_name} (HTTP {http_err.code}): {error_details}")
-                    continue
-                except Exception as e:
-                    print(f"خطأ أثناء الاتصال بنموذج {model_name}: {e}")
-                    continue
+                self._save_to_chroma_memory(query, answer_text)
+
+                return {
+                    "query": query,
+                    "answer": answer_text,
+                    "sources": retrieved_docs
+                }
+            except Exception as e:
+                print(f"Error generating response: {e}")
 
         if not retrieved_docs:
             return {
                 "query": query,
-                "answer": "مرحباً بك في موجة البيان. يرجى التأكد من ضبط متغير البيئة GEMINI_API_KEY للحصول على إجابات ذكية.",
+                "answer": "Welcome to Mowjn AI-Bayan. Please ensure GEMINI_API_KEY environment variable is set for intelligent responses.",
                 "sources": []
             }
 
         top_doc = retrieved_docs[0]
         return {
             "query": query,
-            "answer": f"بناءً على التوثيق في {top_doc['title']}:\n{top_doc['excerpt']}\n\nالمصدر: {top_doc['url']}",
+            "answer": f"Based on documentation in {top_doc['title']}:\n{top_doc['excerpt']}\n\nSource: {top_doc['url']}",
             "sources": retrieved_docs
         }
