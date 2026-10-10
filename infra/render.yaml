@@ -3,11 +3,37 @@ services:
     name: Mowjh-Al-Bayan
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "python main.py"
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
+      - key: GOOGLE_API_KEY
+        sync: false
       - key: GEMINI_API_KEY
+        sync: false
+      - key: MODEL_NAME
+        value: gemini-3.8-flash
+      - key: EMBEDDING_MODEL
+        value: gemini-embedding-2
+      - key: MAX_TOKENS
+        value: "1024"
+      - key: TEMPERATURE
+        value: "0.7"
+      - key: MAX_WORKERS
+        value: "1"
+      - key: MEMORY_DB_PATH
+        value: mowjn_memory.db
+      - key: DECAY_RATE
+        value: "0.01"
+      - key: SIMILARITY_THRESHOLD
+        value: "0.5"
+      - key: TOP_K_MEMORIES
+        value: "3"
+      - key: CHROMA_URL
+        sync: false
+      - key: CHROMA_API_KEY
+        sync: false
+      - key: CHROMA_TENANT
         sync: false
       - key: QDRANT_URL
         sync: false
