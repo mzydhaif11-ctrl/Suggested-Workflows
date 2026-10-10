@@ -1,19 +1,18 @@
+# Web Framework
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.3
 httpx==0.28.1
 
-# Google Gemini (التوليد والتضمين text-embedding-004)
-google-generativeai==0.8.3
+# Google Gemini (التوليد والتضمين)
+google-genai>=2.0.0
 
-# DeepSeek (يستخدم واجهة OpenAI)
-openai==1.57.4
-
-# Qdrant Vector DB
+# Vector Databases
 qdrant-client==1.12.1
-
-# ChromaDB Vector DB
 chromadb==0.5.23
 
-# أدوات مساعدة
+# Math & Embeddings
+numpy>=1.24.0
+
+# Utilities
 python-dotenv==1.0.1
