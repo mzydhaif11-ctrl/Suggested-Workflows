@@ -4,8 +4,9 @@ uvicorn[standard]==0.34.0
 pydantic==2.10.3
 httpx==0.28.1
 
-# Google Gemini (التوليد والتضمين)
+# AI Models (Gemini & DeepSeek/OpenAI)
 google-genai>=2.0.0
+openai>=1.0.0
 
 # Vector Databases
 qdrant-client==1.12.1
