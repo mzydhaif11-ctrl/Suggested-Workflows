@@ -60,7 +60,8 @@ async def chat_endpoint(request: ChatRequest):
                 raise HTTPException(status_code=500, detail="مفتاح GEMINI_API_KEY غير متوفر في الخادم.")
             
             response = gemini_client.models.generate_content(
-                model='gemini-1.5-flash',
+                model="gemini-2.5-flash",
+
                 contents=request.message,
             )
             return {"reply": response.text}
