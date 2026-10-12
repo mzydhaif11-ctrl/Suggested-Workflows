@@ -98,6 +98,7 @@
             line-height: 1.6;
             font-size: 1rem;
             animation: fadeIn 0.3s ease-in-out;
+            white-space: pre-wrap;
         }
 
         @keyframes fadeIn {
@@ -158,6 +159,11 @@
         button:hover {
             background-color: var(--primary-hover);
         }
+
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -177,49 +183,73 @@
             <div class="chat-messages" id="chat-messages">
                 <div class="message ai">
                     أهلاً بك في <strong>موجه البيان</strong>! 🤖<br>
-                    تم ربط هذه الواجهة بمستودع <code>Suggested-Workflows</code>. كيف يمكنني مساعدتك في سير العمل اليوم؟
+                    كيف يمكنني مساعدتك اليوم؟
                 </div>
             </div>
             <div class="input-area">
                 <input type="text" id="user-input" placeholder="اكتب أمرك أو استفسارك هنا..." onkeypress="handleKeyPress(event)">
-                <button onclick="sendMessage()">إرسال</button>
+                <button id="send-btn" onclick="sendMessage()">إرسال</button>
             </div>
         </div>
     </main>
 
     <script>
-        // وظيفة لإرسال الرسالة
-        function sendMessage() {
+        async function sendMessage() {
             const inputField = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
             const messageText = inputField.value.trim();
             
             if (messageText === '') return;
 
             const chatMessages = document.getElementById('chat-messages');
 
-            // 1. إضافة رسالة المستخدم (يمين الشاشة)
+            // 1. عرض رسالة المستخدم
             const userMessage = document.createElement('div');
             userMessage.className = 'message user';
             userMessage.textContent = messageText;
             chatMessages.appendChild(userMessage);
 
-            // تفريغ حقل الإدخال
             inputField.value = '';
-
-            // التمرير التلقائي للأسفل
+            inputField.disabled = true;
+            sendBtn.disabled = true;
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // 2. محاكاة رد الذكاء الاصطناعي بعد ثانية (يسار الشاشة)
-            setTimeout(() => {
-                const aiMessage = document.createElement('div');
-                aiMessage.className = 'message ai';
-                aiMessage.innerHTML = "جاري الاتصال بالخادم ومعالجة الطلب بناءً على بيانات مستودع <strong>Suggested-Workflows</strong>... ⏳ <br><br> <em>(هذا نص تجريبي، تحتاج إلى ربط ملف index.html بـ Backend مثل Python/Flask أو Node.js لإرجاع الرد الحقيقي).</em>";
-                chatMessages.appendChild(aiMessage);
+            // 2. إظهار رسالة جاري التحميل
+            const loadingMessage = document.createElement('div');
+            loadingMessage.className = 'message ai';
+            loadingMessage.textContent = 'جاري المعالجة... ⏳';
+            chatMessages.appendChild(loadingMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                // 3. الاتصال الفعلي بسيرفر FastAPI عبر مسار /api/chat
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: messageText })
+                });
+
+                if (!response.ok) {
+                    throw new Error('فشل الخادم في الرد');
+                }
+
+                const data = await response.json();
+                // 4. وضع الرد الحقيقي من السيرفر
+                loadingMessage.textContent = data.reply;
+
+            } catch (error) {
+                loadingMessage.textContent = 'حدث خطأ في الاتصال بالخادم. تأكد من تشغيل الـ API بشكل صحيح.';
+                console.error(error);
+            } finally {
+                inputField.disabled = false;
+                sendBtn.disabled = false;
+                inputField.focus();
                 chatMessages.scrollTop = chatMessages.scrollHeight;
-            }, 1000);
+            }
         }
 
-        // إرسال الرسالة عند الضغط على زر Enter
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 sendMessage();
