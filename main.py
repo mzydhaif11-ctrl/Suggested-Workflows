@@ -1,11 +1,14 @@
 import logging
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from api.routes.prompt_studio import router as prompt_studio_router
@@ -13,8 +16,15 @@ from api.routes.ai_bridge import router as ai_bridge_router
 from rag_engine import GroundedRAGEngine
 
 
+# ==========================================
+# الإعدادات الأساسية
+# ==========================================
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 
 rag_engine: Optional[GroundedRAGEngine] = None
 
@@ -35,10 +45,11 @@ async def lifespan(app: FastAPI):
 
         app.state.rag_engine = rag_engine
 
-        logger.info("Mawjah RAG initialized.")
+        logger.info("Mawjah RAG initialized successfully.")
 
     except Exception:
         logger.exception("Mawjah RAG initialization failed.")
+
         rag_engine = None
         app.state.rag_engine = None
 
@@ -52,16 +63,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mawjah AI Platform",
     description=(
-        "Mawjah backend for AI integrations "
-        "and retrieval-augmented generation."
+        "Mawjah AI Platform integrating "
+        "Gemini, OpenAI, and RAG."
     ),
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
 
 # ==========================================
-# إعداد الاتصال بالواجهة الأمامية
+# إعداد CORS
 # ==========================================
 
 allowed_origins = [
@@ -86,7 +97,24 @@ app.add_middleware(
 
 
 # ==========================================
-# تسجيل المسارات الحالية
+# ربط ملفات الواجهة الأمامية
+# ==========================================
+
+if STATIC_DIR.is_dir():
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(STATIC_DIR)),
+        name="static",
+    )
+else:
+    logger.warning(
+        "Static directory not found: %s",
+        STATIC_DIR,
+    )
+
+
+# ==========================================
+# تسجيل مسارات API الحالية
 # ==========================================
 
 app.include_router(prompt_studio_router)
@@ -94,22 +122,26 @@ app.include_router(ai_bridge_router)
 
 
 # ==========================================
-# الصفحة الرئيسية للـ Backend
+# الصفحة الرئيسية: عرض index.html
 # ==========================================
 
-@app.get("/", tags=["System"])
+@app.get("/", include_in_schema=False)
 async def root():
-    return {
-        "application": "Mawjah AI Platform",
-        "status": "online",
-        "version": "1.2.0",
-        "documentation": "/docs",
-        "health": "/health",
-        "endpoints": {
-            "prompt_studio": "/api/prompt-studio/enhance",
-            "rag": "/api/rag/ask",
-        },
-    }
+    index_file = STATIC_DIR / "index.html"
+
+    if not index_file.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "واجهة موجة غير موجودة. "
+                "تأكد من وجود الملف static/index.html"
+            ),
+        )
+
+    return FileResponse(
+        path=str(index_file),
+        media_type="text/html",
+    )
 
 
 # ==========================================
@@ -121,10 +153,15 @@ async def health():
     return {
         "status": "ok",
         "application": "Mawjah",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "rag": (
             "ready"
             if rag_engine is not None
+            else "unavailable"
+        ),
+        "frontend": (
+            "available"
+            if (STATIC_DIR / "index.html").is_file()
             else "unavailable"
         ),
     }
@@ -178,3 +215,24 @@ async def ask_rag(payload: RAGQueryRequest):
             status_code=500,
             detail="تعذرت معالجة السؤال حاليًا.",
         )
+
+
+# ==========================================
+# معلومات النظام
+# ==========================================
+
+@app.get("/api/system", tags=["System"])
+async def system_info():
+    return {
+        "application": "Mawjah AI Platform",
+        "version": "1.3.0",
+        "status": "online",
+        "frontend": "/",
+        "health": "/health",
+        "documentation": "/docs",
+        "endpoints": {
+            "prompt_studio": "/api/prompt-studio/enhance",
+            "rag": "/api/rag/ask",
+            "ai_bridge": "مسارات ai_bridge المسجلة في التطبيق",
+        },
+    }
