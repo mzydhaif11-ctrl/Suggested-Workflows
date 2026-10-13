@@ -1,8 +1,11 @@
-# Web Framework
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.3
 
-# AI Models (Gemini & DeepSeek)
 google-genai>=2.0.0
 openai>=1.0.0
+
+chromadb>=1.0.0
+langchain-core
+langchain-community
+langchain-text-splitters>=0.3.0
