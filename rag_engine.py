@@ -74,25 +74,3 @@ class GroundedRAGEngine:
                 })
             except:
                 pass
-
-    def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        query_tokens = self._tokenize(query)
-        if not query_tokens or not self.documents:
-            return []
-
-        results = []
-        total_docs = len(self.documents)
-        doc_freq = {}
-        
-        for token in set(query_tokens):
-            doc_freq[token] = sum(1 for doc in self.documents if token in doc["tokens"])
-
-        for doc in self.documents:
-            score = 0.0
-            doc_len = doc["token_count"]
-            lower_title = doc["title"].lower()
-
-            for token in query_tokens:
-                if token in lower_title:
-                    score += 8.0
-                if query.lower() in lower_
