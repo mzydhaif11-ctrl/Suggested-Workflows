@@ -227,5 +227,3 @@ class GroundedRAGEngine:
             "answer": "تنبيه: مفتاح GEMINI_API_KEY غير موجود في متغيرات البيئة على Render.",
             "sources": []
         }
-
-    
