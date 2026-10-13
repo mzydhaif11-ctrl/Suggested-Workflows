@@ -1,229 +1,531 @@
+from __future__ import annotations
+
+import logging
+import math
 import os
 import re
-import math
 from collections import Counter
-from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from google import genai
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
-WORKSPACE_PAGES_DIR = os.path.join(BASE_DIR, "docs")
+from vector_store import (
+    DOCS_DIR,
+    get_api_key,
+    ensure_index,
+    vector_search,
+)
+
+logger = logging.getLogger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent
+
+WORKSPACE_PAGES_DIR = Path(
+    os.getenv(
+        "MAWJAH_DOCS_DIR",
+        str(DOCS_DIR),
+    )
+)
+
+GENERATION_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-3.8-flash",
+)
+
 
 class GroundedRAGEngine:
-    def __init__(self, pages_dir: str = WORKSPACE_PAGES_DIR):
-        self.pages_dir = pages_dir
-        self.documents = []
-        
-        if not os.path.exists(self.pages_dir):
-            try:
-                os.makedirs(self.pages_dir, exist_ok=True)
-            except:
-                pass
-                
-        self.index_documents()
+    def __init__(
+        self,
+        pages_dir: Optional[str] = None,
+        auto_index: bool = True,
+    ):
+        self.pages_dir = (
+            Path(pages_dir)
+            if pages_dir
+            else WORKSPACE_PAGES_DIR
+        )
 
-    def _tokenize(self, text: str) -> List[str]:
+        self.documents: List[Dict[str, Any]] = []
+
+        self._load_lexical_documents()
+
+        if auto_index and get_api_key():
+            try:
+                result = ensure_index(
+                    self.pages_dir
+                )
+
+                logger.info(
+                    "RAG vector index status: %s",
+                    result,
+                )
+
+            except Exception:
+                logger.exception(
+                    "Could not initialize Chroma/Gemini index; "
+                    "using keyword fallback."
+                )
+
+    def _tokenize(
+        self,
+        text: str,
+    ) -> List[str]:
         if not text:
             return []
-        return re.findall(r'\b[a-zA-Z0-9_\u0600-\u06FF]+\b', str(text).lower())
 
-    def index_documents(self):
+        return re.findall(
+            r"[a-zA-Z0-9_\u0600-\u06FF]+",
+            str(text).lower(),
+        )
+
+    def _load_lexical_documents(self) -> None:
         self.documents = []
-        if not os.path.exists(self.pages_dir):
+
+        if not self.pages_dir.is_dir():
+            logger.warning(
+                "Knowledge directory does not exist: %s",
+                self.pages_dir,
+            )
             return
 
-        for filename in os.listdir(self.pages_dir):
-            if filename == "index.md" or not filename.endswith(".md"):
+        paths = sorted(
+            [
+                *self.pages_dir.glob("*.md"),
+                *self.pages_dir.glob("*.txt"),
+            ],
+            key=lambda path: path.name.lower(),
+        )
+
+        for path in paths:
+            if path.name.lower() == "index.md":
                 continue
 
-            filepath = os.path.join(self.pages_dir, filename)
             try:
-                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
+                content = path.read_text(
+                    encoding="utf-8",
+                    errors="replace",
+                )
 
                 if not content.strip():
                     continue
 
-                original_url = "https://ai.google.dev/gemini-api/docs"
-                url_match = re.search(r"original_url:\s*(https?://[^\s\n]+)", content, re.IGNORECASE)
-                if url_match:
-                    original_url = url_match.group(1).strip()
+                url_match = re.search(
+                    r"original_url\s*:\s*[\"']?"
+                    r"(https?://[^\s\"'`]+)",
+                    content,
+                    flags=re.IGNORECASE,
+                )
 
-                heading_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
-                if heading_match:
-                    title = heading_match.group(1).strip()
-                    main_body = content[heading_match.start():]
-                else:
-                    title = filename.replace(".md", "").replace("_", " ").title()
-                    main_body = re.sub(r"^---[\s\S]*?---\n", "", content)
+                source_url = (
+                    url_match.group(1).rstrip(".,)")
+                    if url_match
+                    else (
+                        "https://github.com/"
+                        "mzydhaif11-ctrl/"
+                        "Suggested-Workflows/blob/main/docs/"
+                        + path.name
+                    )
+                )
 
-                tokens = self._tokenize(main_body + " " + title)
-                token_count = len(tokens)
+                heading_match = re.search(
+                    r"^#\s+(.+)$",
+                    content,
+                    flags=re.MULTILINE,
+                )
 
-                if token_count == 0:
+                title = (
+                    heading_match.group(1).strip().strip("# ")
+                    if heading_match
+                    else (
+                        path.stem
+                        .replace("_", " ")
+                        .replace("-", " ")
+                        .title()
+                    )
+                )
+
+                tokens = self._tokenize(
+                    title + " " + content
+                )
+
+                if not tokens:
                     continue
 
                 self.documents.append({
-                    "filename": filename,
-                    "filepath": filepath,
+                    "filename": path.name,
+                    "filepath": str(path),
                     "title": title,
-                    "url": original_url,
-                    "content": main_body,
+                    "url": source_url,
+                    "content": content,
                     "tokens": Counter(tokens),
-                    "token_count": token_count
+                    "token_count": len(tokens),
                 })
-            except:
-                pass
 
-    def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+            except (OSError, UnicodeError, ValueError):
+                logger.exception(
+                    "Could not read knowledge file %s",
+                    path,
+                )
+
+    def index_documents(
+        self,
+        force_rebuild: bool = False,
+    ) -> Dict[str, Any]:
+        from Ingrst import index_documents
+
+        result = index_documents(
+            force_rebuild=force_rebuild
+        )
+
+        self._load_lexical_documents()
+
+        return result
+
+    def _keyword_search(
+        self,
+        query: str,
+        top_k: int = 3,
+    ) -> List[Dict[str, Any]]:
         query_tokens = self._tokenize(query)
+
         if not query_tokens or not self.documents:
             return []
 
-        results = []
+        query_lower = query.lower().strip()
         total_docs = len(self.documents)
-        doc_freq = {}
-        
-        for token in set(query_tokens):
-            doc_freq[token] = sum(1 for doc in self.documents if token in doc["tokens"])
+
+        doc_freq = {
+            token: sum(
+                1
+                for doc in self.documents
+                if token in doc["tokens"]
+            )
+            for token in set(query_tokens)
+        }
+
+        average_length = (
+            sum(
+                doc["token_count"]
+                for doc in self.documents
+            )
+            / max(total_docs, 1)
+        )
+
+        results: List[Dict[str, Any]] = []
 
         for doc in self.documents:
             score = 0.0
-            doc_len = doc["token_count"]
+
             lower_title = doc["title"].lower()
+            doc_len = doc["token_count"]
+
+            if query_lower and query_lower in lower_title:
+                score += 20.0
 
             for token in query_tokens:
                 if token in lower_title:
-                    score += 8.0
-                # تم إصلاح هذا السطر ليكون كاملاً وصحيحاً
-                if query.lower() in lower_title:
-                    score += 25.0
+                    score += 4.0
 
-                tf = doc["tokens"].get(token, 0)
-                if tf > 0:
-                    df = doc_freq.get(token, 1)
-                    idf = math.log((total_docs - df + 0.5) / (df + 0.5) + 1.0)
+                term_frequency = (
+                    doc["tokens"].get(token, 0)
+                )
+
+                if term_frequency:
+                    frequency = doc_freq.get(token, 1)
+
+                    inverse_document_frequency = math.log(
+                        1.0
+                        + (
+                            total_docs - frequency + 0.5
+                        )
+                        / (frequency + 0.5)
+                    )
+
                     k1 = 1.2
                     b = 0.75
-                    avg_len = 1200
-                    norm_tf = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (doc_len / avg_len)))
-                    score += (idf * norm_tf)
+
+                    denominator = term_frequency + k1 * (
+                        1 - b
+                        + b * (
+                            doc_len
+                            / max(average_length, 1.0)
+                        )
+                    )
+
+                    score += (
+                        inverse_document_frequency
+                        * (
+                            term_frequency
+                            * (k1 + 1)
+                            / denominator
+                        )
+                    )
 
             if score > 0:
-                excerpt = self._extract_relevant_excerpt(doc["content"], query_tokens)
+                excerpt = self._extract_relevant_excerpt(
+                    doc["content"],
+                    query_tokens,
+                )
+
                 results.append({
                     "title": doc["title"],
                     "url": doc["url"],
                     "filename": doc["filename"],
-                    "score": round(score, 2),
-                    "excerpt": excerpt
+                    "score": round(score, 4),
+                    "excerpt": excerpt,
                 })
 
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:top_k]
+        results.sort(
+            key=lambda item: item["score"],
+            reverse=True,
+        )
 
-    def _extract_relevant_excerpt(self, content: str, query_tokens: List[str], max_chars: int = 450) -> str:
-        paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 35]
-        best_p = ""
-        best_score = -1
+        return results[:max(1, int(top_k))]
 
-        for p in paragraphs:
-            if p.startswith("-") and len(p.splitlines()) > 5:
-                continue
-            p_lower = p.lower()
-            p_score = sum(1 for t in query_tokens if t in p_lower)
-            if p_score > best_score:
-                best_score = p_score
-                best_p = p
+    def search(
+        self,
+        query: str,
+        top_k: int = 3,
+        api_key: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        query = str(query or "").strip()
 
-        if not best_p and paragraphs:
-            best_p = paragraphs[0]
+        if not query:
+            return []
 
-        clean_text = re.sub(r'#+\s*', '', best_p)
-        clean_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', clean_text)
-        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-        
+        if api_key or get_api_key():
+            try:
+                results = vector_search(
+                    query,
+                    top_k=top_k,
+                    api_key=api_key,
+                )
+
+                if results:
+                    return results
+
+            except Exception:
+                logger.exception(
+                    "Vector search failed; using keyword search."
+                )
+
+        return self._keyword_search(
+            query,
+            top_k=top_k,
+        )
+
+    def _extract_relevant_excerpt(
+        self,
+        content: str,
+        query_tokens: List[str],
+        max_chars: int = 450,
+    ) -> str:
+        paragraphs = [
+            paragraph.strip()
+            for paragraph in re.split(
+                r"\n\s*\n",
+                content,
+            )
+            if len(paragraph.strip()) > 35
+        ]
+
+        if not paragraphs:
+            paragraphs = (
+                [content.strip()]
+                if content.strip()
+                else []
+            )
+
+        def paragraph_score(
+            paragraph: str,
+        ) -> int:
+            lower = paragraph.lower()
+
+            return sum(
+                1
+                for token in query_tokens
+                if token in lower
+            )
+
+        best_paragraph = max(
+            paragraphs,
+            key=paragraph_score,
+            default="",
+        )
+
+        clean_text = re.sub(
+            r"^---\s*\n.*?\n---\s*\n",
+            "",
+            best_paragraph,
+            flags=re.DOTALL,
+        )
+
+        clean_text = re.sub(
+            r"#+\s*",
+            "",
+            clean_text,
+        )
+
+        clean_text = re.sub(
+            r"\[([^\]]+)\]\([^\)]+\)",
+            r"\1",
+            clean_text,
+        )
+
+        clean_text = re.sub(
+            r"\s+",
+            " ",
+            clean_text,
+        ).strip()
+
         if len(clean_text) > max_chars:
-            clean_text = clean_text[:max_chars].rsplit(" ", 1)[0] + "..."
-            
+            clean_text = (
+                clean_text[:max_chars].rsplit(" ", 1)[0]
+                + "..."
+            )
+
         return clean_text
 
-    def answer_query(self, query: str, provided_api_key: Optional[str] = None) -> Dict[str, Any]:
-        api_key = provided_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        retrieved_docs = self.search(query, top_k=3)
+    def answer_query(
+        self,
+        query: str,
+        provided_api_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        query = str(query or "").strip()
 
-        # 1. إذا وجد مستندات مطابقة في مجلد docs
-        if retrieved_docs:
-            if api_key:
-                context_text = "\n\n".join([
-                    f"Document: {d['title']}\nURL: {d['url']}\nContent Excerpt:\n{d['excerpt']}"
-                    for d in retrieved_docs
-                ])
-                system_msg = (
-                    "You are an expert technical support assistant. "
-                    "Answer the customer's inquiry in Arabic accurately and helpfully, strictly grounded in the official documentation excerpts provided. "
-                    "Always cite the source document name and include its official URL."
+        if not query:
+            return {
+                "query": query,
+                "answer": "اكتب سؤالك أولًا.",
+                "sources": [],
+            }
+
+        api_key = provided_api_key or get_api_key()
+
+        retrieved_docs = self.search(
+            query,
+            top_k=3,
+            api_key=api_key,
+        )
+
+        if retrieved_docs and api_key:
+            context_text = "\n\n".join(
+                f"المستند: {doc['title']}\n"
+                f"الرابط: {doc['url']}\n"
+                f"المقتطف: {doc['excerpt']}"
+                for doc in retrieved_docs
+            )
+
+            prompt = (
+                "أنت مساعد دعم تقني لمنصة موجة. "
+                "أجب باللغة العربية بوضوح. "
+                "اعتمد على المقاطع التالية عند الإجابة، "
+                "ولا تدّعِ أن معلومة واردة في المصادر "
+                "إذا لم تكن موجودة فيها. "
+                "إذا كانت المصادر غير كافية، صرّح بذلك. "
+                "اختم بذكر المستندات وروابطها عند توفرها.\n\n"
+                f"المصادر المسترجعة:\n{context_text}\n\n"
+                f"سؤال المستخدم: {query}\n\n"
+                "الإجابة:"
+            )
+
+            try:
+                client = genai.Client(
+                    api_key=api_key
                 )
-                prompt = f"{system_msg}\n\nDocumentation Context:\n{context_text}\n\nCustomer Inquiry: {query}\n\nHelpful response in Arabic:"
-                
-                try:
-                    client = genai.Client(api_key=api_key)
-                    response = client.models.generate_content(
-                        model='gemini-3.8-flash',
-                        contents=prompt,
-                    )
-                    return {
-                        "query": query,
-                        "answer": response.text,
-                        "sources": retrieved_docs
-                    }
-                except Exception as e:
-                    top_doc = retrieved_docs[0]
-                    return {
-                        "query": query,
-                        "answer": f"تنبيه: حدث خطأ أثناء الاتصال بنموذج Gemini ({str(e)}).\n\n📌 **مقتطف من التوثيق المتوفر:**\n{top_doc['excerpt']}\n🔗 **المصدر:** {top_doc['url']}",
-                        "sources": retrieved_docs
-                    }
 
-            # خطة بديلة في حال عدم توفر المفتاح
-            top_doc = retrieved_docs[0]
-            answer_parts = [
-                f"بناءً على التوثيق الرسمي في قسم **{top_doc['title']}**:\n",
-                f"📌 **مقتطف من التوثيق:**\n{top_doc['excerpt']}\n",
-                f"🔗 **المصدر:** {top_doc['url']}"
-            ]
-            if len(retrieved_docs) > 1:
-                answer_parts.append(f"\n💡 **للمزيد من التفاصيل:** راجع أيضاً قسم **{retrieved_docs[1]['title']}**.")
+                response = client.models.generate_content(
+                    model=GENERATION_MODEL,
+                    contents=prompt,
+                )
+
+                answer = (
+                    getattr(response, "text", None) or ""
+                ).strip()
+
+                if not answer:
+                    raise RuntimeError(
+                        "Gemini returned an empty answer."
+                    )
+
+                return {
+                    "query": query,
+                    "answer": answer,
+                    "sources": retrieved_docs,
+                }
+
+            except Exception:
+                logger.exception(
+                    "Gemini answer generation failed."
+                )
+
+                first = retrieved_docs[0]
+
+                return {
+                    "query": query,
+                    "answer": (
+                        "تعذّر توليد إجابة بالذكاء الاصطناعي حاليًا. "
+                        "هذا أقرب مقتطف وجدته في قاعدة المعرفة:\n\n"
+                        f"{first['excerpt']}\n\n"
+                        f"المصدر: {first['url']}"
+                    ),
+                    "sources": retrieved_docs,
+                }
+
+        if retrieved_docs:
+            first = retrieved_docs[0]
 
             return {
                 "query": query,
-                "answer": "\n".join(answer_parts),
-                "sources": retrieved_docs
+                "answer": (
+                    f"وجدت معلومات في مستند «{first['title']}»:\n\n"
+                    f"{first['excerpt']}\n\n"
+                    f"المصدر: {first['url']}"
+                ),
+                "sources": retrieved_docs,
             }
 
-        # 2. إذا لم يجد أي تطابق في التوثيق -> يتحول تلقائياً إلى Gemini كذكاء اصطناعي عام
         if api_key:
             try:
-                client = genai.Client(api_key=api_key)
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=query,
+                client = genai.Client(
+                    api_key=api_key
                 )
-                return {
-                    "query": query,
-                    "answer": response.text,
-                    "sources": []
-                }
-            except Exception as e:
-                return {
-                    "query": query,
-                    "answer": f"خطأ في الاتصال بنموذج الذكاء الاصطناعي: {str(e)}",
-                    "sources": []
-                }
 
-        # في حال عدم وجود المفتاح إطلاقاً
+                response = client.models.generate_content(
+                    model=GENERATION_MODEL,
+                    contents=(
+                        "أجب باللغة العربية. "
+                        "لا تدّعِ أنك تستند إلى توثيق منصة موجة؛ "
+                        "فلم يتم العثور على مصدر مناسب في قاعدة المعرفة.\n\n"
+                        f"السؤال: {query}"
+                    ),
+                )
+
+                answer = (
+                    getattr(response, "text", None) or ""
+                ).strip()
+
+                if answer:
+                    return {
+                        "query": query,
+                        "answer": answer,
+                        "sources": [],
+                        "grounded": False,
+                    }
+
+            except Exception:
+                logger.exception(
+                    "General Gemini fallback failed."
+                )
+
         return {
             "query": query,
-            "answer": "تنبيه: مفتاح GEMINI_API_KEY غير موجود في متغيرات البيئة على Render.",
-            "sources": []
+            "answer": (
+                "لم أجد مقطعًا مناسبًا في ملفات المعرفة، "
+                "ولم أتمكن من استخدام Gemini. "
+                "تحقق من ملفات مجلد docs "
+                "ومن إعداد GEMINI_API_KEY في Render."
+            ),
+            "sources": [],
         }
