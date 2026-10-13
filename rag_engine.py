@@ -4,7 +4,7 @@ import math
 from collections import Counter
 from typing import List, Dict, Any, Optional
 
-# استدعاء مكتبة جوجل الجديدة
+# استدعاء مكتبة جوجل الرسمية
 from google import genai
 
 # تحديد المسار بشكل آمن وإنشاء المجلد إذا لم يكن موجوداً
@@ -76,7 +76,7 @@ class GroundedRAGEngine:
                     "token_count": token_count
                 })
             except:
-                pass  # صمت تام لتفادي إزعاج الـ Logs
+                pass
 
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         query_tokens = self._tokenize(query)
@@ -154,53 +154,69 @@ class GroundedRAGEngine:
         api_key = provided_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         retrieved_docs = self.search(query, top_k=3)
 
-        if not retrieved_docs:
+        # 1. إذا وجد مستندات مطابقة في مجلد docs
+        if retrieved_docs:
+            if api_key:
+                context_text = "\n\n".join([
+                    f"Document: {d['title']}\nURL: {d['url']}\nContent Excerpt:\n{d['excerpt']}"
+                    for d in retrieved_docs
+                ])
+                system_msg = (
+                    "You are an expert technical support assistant. "
+                    "Answer the customer's inquiry in Arabic accurately and helpfully, strictly grounded in the official documentation excerpts provided. "
+                    "Always cite the source document name and include its official URL."
+                )
+                prompt = f"{system_msg}\n\nDocumentation Context:\n{context_text}\n\nCustomer Inquiry: {query}\n\nHelpful response in Arabic:"
+                
+                try:
+                    client = genai.Client(api_key=api_key)
+                    response = client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=prompt,
+                    )
+                    return {
+                        "query": query,
+                        "answer": response.text,
+                        "sources": retrieved_docs
+                    }
+                except Exception:
+                    pass
+
+            # خطة بديلة (Fallback) في حال عدم توفر المفتاح
+            top_doc = retrieved_docs[0]
+            answer_parts = [
+                f"بناءً على التوثيق الرسمي في قسم **{top_doc['title']}**:\n",
+                f"📌 **مقتطف من التوثيق:**\n{top_doc['excerpt']}\n",
+                f"🔗 **المصدر:** {top_doc['url']}"
+            ]
+            if len(retrieved_docs) > 1:
+                answer_parts.append(f"\n💡 **للمزيد من التفاصيل:** راجع أيضاً قسم **{retrieved_docs[1]['title']}**.")
+
             return {
                 "query": query,
-                "answer": "عذراً، لم أتمكن من العثور على معلومات مباشرة مطابقة لبحثك في ملفات التوثيق الحالية.",
-                "sources": []
+                "answer": "\n".join(answer_parts),
+                "sources": retrieved_docs
             }
 
+        # 2. إذا لم يجد أي تطابق في ملفات التوثيق -> يتحول تلقائياً إلى Gemini كذكاء اصطناعي عام
         if api_key:
-            context_text = "\n\n".join([
-                f"Document: {d['title']}\nURL: {d['url']}\nContent Excerpt:\n{d['excerpt']}"
-                for d in retrieved_docs
-            ])
-            system_msg = (
-                "You are an expert technical support assistant. "
-                "Answer the customer's inquiry in Arabic accurately and helpfully, strictly grounded in the official documentation excerpts provided. "
-                "Always cite the source document name and include its official URL."
-            )
-            prompt = f"{system_msg}\n\nDocumentation Context:\n{context_text}\n\nCustomer Inquiry: {query}\n\nHelpful response in Arabic:"
-            
             try:
-                # استخدام عميل Gemini الجديد بدلاً من تعقيدات urllib
                 client = genai.Client(api_key=api_key)
                 response = client.models.generate_content(
                     model='gemini-2.0-flash',
-                    contents=prompt,
+                    contents=query,
                 )
                 return {
                     "query": query,
                     "answer": response.text,
-                    "sources": retrieved_docs
+                    "sources": []
                 }
             except Exception:
-                pass # صمت عند الخطأ، والانتقال مباشرة لخطة البديل (Fallback)
+                pass
 
-        # البديل (Fallback) في حال غياب المفتاح أو فشل الاتصال بالنموذج
-        top_doc = retrieved_docs[0]
-        answer_parts = [
-            f"بناءً على التوثيق الرسمي في قسم **{top_doc['title']}**:\n",
-            f"📌 **مقتطف من التوثيق:**\n{top_doc['excerpt']}\n",
-            f"🔗 **المصدر:** {top_doc['url']}"
-        ]
-        
-        if len(retrieved_docs) > 1:
-            answer_parts.append(f"\n💡 **للمزيد من التفاصيل:** راجع أيضاً قسم **{retrieved_docs[1]['title']}**.")
-
+        # في حال عدم وجود مفتاح وتوقف الخدمة تماماً
         return {
             "query": query,
-            "answer": "\n".join(answer_parts),
-            "sources": retrieved_docs
+            "answer": "عذراً، لم أتمكن من العثور على إجابة في التوثيق ولم تتوفر خدمة الذكاء الاصطناعي العامة حالياً.",
+            "sources": []
         }
