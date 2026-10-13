@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 rag_engine: Optional[GroundedRAGEngine] = None
 
 
+# ==========================================
+# تهيئة محرك المعرفة
+# ==========================================
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global rag_engine
@@ -28,26 +32,44 @@ async def lifespan(app: FastAPI):
             GroundedRAGEngine,
             auto_index=True,
         )
-        logger.info("Mawjah RAG initialized successfully.")
+
+        app.state.rag_engine = rag_engine
+
+        logger.info("Mawjah RAG initialized.")
 
     except Exception:
-        logger.exception("Failed to initialize Mawjah RAG.")
+        logger.exception("Mawjah RAG initialization failed.")
         rag_engine = None
+        app.state.rag_engine = None
 
     yield
 
 
+# ==========================================
+# إنشاء تطبيق موجة
+# ==========================================
+
 app = FastAPI(
     title="Mawjah AI Platform",
-    description="Mawjah integration layer for Gemini, OpenAI, and RAG",
-    version="1.1.0",
+    description=(
+        "Mawjah backend for AI integrations "
+        "and retrieval-augmented generation."
+    ),
+    version="1.2.0",
     lifespan=lifespan,
 )
 
 
+# ==========================================
+# إعداد الاتصال بالواجهة الأمامية
+# ==========================================
+
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "",
+    ).split(",")
     if origin.strip()
 ]
 
@@ -56,16 +78,62 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+    ],
 )
 
 
-# Existing integrations
+# ==========================================
+# تسجيل المسارات الحالية
+# ==========================================
+
 app.include_router(prompt_studio_router)
 app.include_router(ai_bridge_router)
 
 
-# RAG request model
+# ==========================================
+# الصفحة الرئيسية للـ Backend
+# ==========================================
+
+@app.get("/", tags=["System"])
+async def root():
+    return {
+        "application": "Mawjah AI Platform",
+        "status": "online",
+        "version": "1.2.0",
+        "documentation": "/docs",
+        "health": "/health",
+        "endpoints": {
+            "prompt_studio": "/api/prompt-studio/enhance",
+            "rag": "/api/rag/ask",
+        },
+    }
+
+
+# ==========================================
+# فحص صحة النظام
+# ==========================================
+
+@app.get("/health", tags=["System"])
+async def health():
+    return {
+        "status": "ok",
+        "application": "Mawjah",
+        "version": "1.2.0",
+        "rag": (
+            "ready"
+            if rag_engine is not None
+            else "unavailable"
+        ),
+    }
+
+
+# ==========================================
+# نموذج استقبال الأسئلة
+# ==========================================
+
 class RAGQueryRequest(BaseModel):
     query: str = Field(
         ...,
@@ -75,18 +143,10 @@ class RAGQueryRequest(BaseModel):
     )
 
 
-# System health check
-@app.get("/health", tags=["System"])
-async def health():
-    return {
-        "status": "ok",
-        "application": "Mawjah",
-        "version": "1.1.0",
-        "rag": "ready" if rag_engine is not None else "unavailable",
-    }
+# ==========================================
+# واجهة السؤال والبحث في المعرفة
+# ==========================================
 
-
-# RAG question endpoint
 @app.post("/api/rag/ask", tags=["RAG"])
 async def ask_rag(payload: RAGQueryRequest):
     if rag_engine is None:
@@ -116,5 +176,5 @@ async def ask_rag(payload: RAGQueryRequest):
 
         raise HTTPException(
             status_code=500,
-            detail="تعذرت معالجة السؤال. يرجى المحاولة لاحقًا.",
+            detail="تعذرت معالجة السؤال حاليًا.",
         )
