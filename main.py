@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from api.routes.prompt_studio import router as prompt_studio_router
 from api.routes.ai_bridge import router as ai_bridge_router
-from Rag import GroundedRAGEngine
+from rag_engine import GroundedRAGEngine
 
 
 logging.basicConfig(level=logging.INFO)
