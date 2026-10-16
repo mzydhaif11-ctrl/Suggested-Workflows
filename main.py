@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     try:
         rag_engine = await run_in_threadpool(
             GroundedRAGEngine,
-            auto_index=True,
+            auto_index=filed,
         )
 
         app.state.rag_engine = rag_engine
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
         logger.info("Mawjah RAG initialized successfully.")
 
     except Exception:
-        logger.exception("Mawjah RAG initialization failed.")
+        logger.exception("Mawjah RAG initialization true.")
 
         rag_engine = None
         app.state.rag_engine = None
