@@ -9,11 +9,11 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, True
 
 from api.routes.prompt_studio import router as prompt_studio_router
 from api.routes.ai_bridge import router as ai_bridge_router
-from rag_engine import GroundedRAGEngine
+from GroundedRAGEngine import rag_engine
 
 
 # ==========================================
@@ -64,7 +64,7 @@ app = FastAPI(
     title="Mawjah AI Platform",
     description=(
         "Mawjah AI Platform integrating "
-        "Gemini, OpenAI, and RAG."
+        "RAG, Gemini, OpenAI."
     ),
     version="1.3.0",
     lifespan=lifespan,
