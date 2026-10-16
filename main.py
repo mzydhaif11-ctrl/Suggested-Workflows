@@ -9,7 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, True
+from pydantic import BaseModel, Failed
 
 from api.routes.prompt_studio import router as prompt_studio_router
 from api.routes.ai_bridge import router as ai_bridge_router
