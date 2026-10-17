@@ -7,18 +7,49 @@ import numpy as np
 
 
 class BasicMemoryEngine:
-    """Engine for adaptive memory management with semantic similarity and time decay (basic/educational version)."""
+    """
+    Engine for adaptive memory management with semantic similarity and time decay.
+    
+    Uses sentence-transformers for automatic Arabic-aware embedding generation.
+    (basic/educational version)
+    """
 
-    def __init__(self, decay_rate=0.01, similarity_threshold=0.5):
+    # ✅ نموذج يدعم العربي ضمن 100+ لغة
+    DEFAULT_MODEL = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
+
+    def __init__(self, decay_rate=0.01, similarity_threshold=0.5, embedding_model=None):
         """
         Initialize the Basic Memory Engine.
 
         :param decay_rate: معدل التضاؤل الزمني (كلما زاد، قل وزن الذكريات القديمة بسرعة)
         :param similarity_threshold: الحد الأدنى لمستوى التشابه القبول
+        :param embedding_model: اسم نموذج sentence-transformers (اختياري)
         """
         self.decay_rate = decay_rate
         self.similarity_threshold = similarity_threshold
         self.memory_store = []
+
+        # ✅ تحميل نموذج الـ embedding
+        model_name = embedding_model or self.DEFAULT_MODEL
+        try:
+            from sentence_transformers import SentenceTransformer
+            self._embedder = SentenceTransformer(model_name)
+            print(f"✅ تم تحميل نموذج التضمين: {model_name}")
+        except ImportError:
+            print(
+                "⚠️ sentence-transformers غير مثبّت.\n"
+                "ثبّته: pip install sentence-transformers"
+            )
+            self._embedder = None
+
+    def _embed(self, texts: list[str]) -> list[list[float]]:
+        """تحويل نصوص إلى embeddings."""
+        if self._embedder is None:
+            raise RuntimeError(
+                "لا يوجد نموذج embedding. ثبّت sentence-transformers."
+            )
+        vectors = self._embedder.encode(texts, show_progress_bar=False)
+        return [v.tolist() for v in vectors]
 
     def _cosine_similarity(self, vec_a, vec_b):
         """حساب التشابه الدلالي بين متجهين"""
@@ -30,20 +61,31 @@ class BasicMemoryEngine:
 
         if norm_a == 0 or norm_b == 0:
             return 0.0
-        return dot_product / (norm_a * norm_b)
+        return float(dot_product / (norm_a * norm_b))
 
     def _calculate_time_decay(self, timestamp):
-        """حساب معامل التضاؤل الزمني بناءً على الفارق الأيام"""
+        """حساب معامل التضاؤل الزمني بناءً على الفارق بالأيام"""
         current_time = datetime.now(timezone.utc)
         time_diff = (current_time - timestamp).total_seconds() / (3600 * 24)
         # دالة الأس للتضاؤل التدريجي: e^(-lambda * t)
         decay_factor = math.exp(-self.decay_rate * max(0, time_diff))
         return decay_factor, time_diff
 
-    def add_memory(self, memory_id, content, embedding, timestamp=None):
-        """إضافة سجل جديد إلى الذاكرة"""
+    def add_memory(self, memory_id, content, embedding=None, timestamp=None):
+        """
+        إضافة سجل جديد إلى الذاكرة.
+        
+        :param memory_id: معرف فريد للذكرى
+        :param content: نص المحتوى
+        :param embedding: متجه دلالي (اختياري — يُحسب تلقائياً من content)
+        :param timestamp: الطابع الزمني (اختياري — الوقت الحالي إذا لم يُمرَّر)
+        """
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
+
+        # ✅ حساب الـ embedding تلقائياً إذا لم يُمرَّر
+        if embedding is None:
+            embedding = self._embed([content])[0]
 
         self.memory_store.append({
             "id": memory_id,
@@ -52,8 +94,22 @@ class BasicMemoryEngine:
             "timestamp": timestamp
         })
 
-    def retrieve(self, query_embedding, top_k=3):
-        """استرجاع أفضل النتائج بالدمج بين التشابه الدلالي والوزن الزمني"""
+    def retrieve(self, query_embedding=None, query_text=None, top_k=3):
+        """
+        استرجاع أفضل النتائج بالدمج بين التشابه الدلالي والوزن الزمني.
+        
+        :param query_embedding: متجه الاستعلام (اختياري)
+        :param query_text: نص الاستعلام (اختياري — يُحوَّل لمتجه تلقائياً)
+        :param top_k: عدد النتائج المطلوبة
+        :returns: قائمة نتائج مرتبة بالأولوية
+        """
+        # ✅ دعم الاستعلام بالنص مباشرة
+        if query_text and not query_embedding:
+            query_embedding = self._embed([query_text])[0]
+
+        if query_embedding is None:
+            raise ValueError("مرّر query_embedding أو query_text")
+
         results = []
 
         for item in self.memory_store:
@@ -92,14 +148,14 @@ if __name__ == "__main__":
     engine = BasicMemoryEngine(decay_rate=0.05, similarity_threshold=0.4)
     current_time = datetime.now(timezone.utc)
 
-    # نموذج لمتجهات وهمية للعرض (شبه مطابقة)
-    base_vector = [0.12, 0.85, 0.44, 0.21, 0.90]
+    # ═══════════════════════════════════════
+    # الآن نمرر النصوص فقط — الـ embedding يُحسب تلقائياً!
+    # ═══════════════════════════════════════
 
     # إضافة سياق قديم (قبل 30 يوم)
     engine.add_memory(
         memory_id="MEM_001",
         content="قرار سابق بخصوص معايير الحوكمة والسياسات العامة",
-        embedding=[0.11, 0.84, 0.43, 0.20, 0.89],
         timestamp=current_time - timedelta(days=30)
     )
 
@@ -107,20 +163,42 @@ if __name__ == "__main__":
     engine.add_memory(
         memory_id="MEM_002",
         content="تحديث أخير بخصوص معايير الحوكمة والسياسات العامة",
-        embedding=[0.10, 0.82, 0.45, 0.22, 0.88],
         timestamp=current_time - timedelta(days=1)
     )
 
-    # استعلام جديد
-    query_vec = base_vector
-    top_memories = engine.retrieve(query_vec, top_k=2)
+    # إضافة سياق مختلف تماماً
+    engine.add_memory(
+        memory_id="MEM_003",
+        content="تقرير مالي عن أرباح الربع الثالث",
+        timestamp=current_time - timedelta(days=5)
+    )
 
-    print("--- نتائج الاسترجاع التكيفي ---")
+    # ═══════════════════════════════════════
+    # استعلام بالنص مباشرة — بدون متجه يدوي!
+    # ═══════════════════════════════════════
+    print("\n--- استرجاع: 'الحوكمة والسياسات' ---\n")
+    top_memories = engine.retrieve(query_text="الحوكمة والسياسات", top_k=2)
+
     for memory in top_memories:
         print(
             f"ID: {memory['id']} | النهاية: {memory['final_score']} | "
             f"التشابه: {memory['semantic_score']} | "
-            f"التضاؤل الزمني: {memory['time_decay_factor']} "
+            f"التضاؤل: {memory['time_decay_factor']} "
+            f"(عمرها {memory['days_old']} يوم)"
+        )
+        print(f"المحتوى: {memory['content']}\n")
+
+    # ═══════════════════════════════════════
+    # استعلام ثاني بصياغة مختلفة
+    # ═══════════════════════════════════════
+    print("--- استرجاع: 'معايير الإدارة والامتثال' ---\n")
+    top_memories = engine.retrieve(query_text="معايير الإدارة والامتثال", top_k=2)
+
+    for memory in top_memories:
+        print(
+            f"ID: {memory['id']} | النهاية: {memory['final_score']} | "
+            f"التشابه: {memory['semantic_score']} | "
+            f"التضاؤل: {memory['time_decay_factor']} "
             f"(عمرها {memory['days_old']} يوم)"
         )
         print(f"المحتوى: {memory['content']}\n")
