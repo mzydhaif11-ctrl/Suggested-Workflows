@@ -1,8 +1,7 @@
 """
 Mowjn AI-Bayan | Adaptive Memory Engine
 ========================================
-نظام ذاكرة سياقية تكيفية لمنصة موجة البيان.
-يدعم التشابه الدلالي مع تضاؤل زمني، تخزين دائم، واكتشاف التكرار.
+نسخة كاملة مع embedding مدمج (Sentence Transformers).
 
 License: MIT
 Author: Mowjn AI-Bayan Team
@@ -12,11 +11,16 @@ from __future__ import annotations
 
 import logging
 import math
-import sqlite3
+import shutil
+import tempfile
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
+import chromadb
+from chromadb.config import Settings
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -24,15 +28,12 @@ logger = logging.getLogger(__name__)
 
 class AdaptiveMemoryEngine:
     """
-    محرك ذاكرة سياقية تكيفية يجمع بين التشابه الدلالي والوزن الزمني.
-
-    يدعم:
-      - تخزين دائم عبر SQLite
-      - اكتشاف التكرار (deduplication)
-      - عمليات دفعات (batch operations)
-      - دوال تضاؤل قابلة للتبديل
-      - تنظيف تلقائي للذكريات المنخفضة الدرجة
+    محرك ذاكرة سياقية تكيفية مع embedding مدمج.
+    ✅ يعطيه نص → هو يتكفّل بالباقي.
     """
+
+    # ✅ نموذج embedder الافتراضي (يدعم العربية)
+    DEFAULT_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
 
     def __init__(
         self,
@@ -41,143 +42,176 @@ class AdaptiveMemoryEngine:
         dedup_threshold: float = 0.95,
         max_store_size: int = 10_000,
         decay_function: str = "exponential",
-        db_path: Optional[str] = None,
+        persist_directory: Optional[str] = None,
+        collection_name: str = "mowjn_memories",
+        fetch_multiplier: int = 3,
+        embedding_model: Optional[str] = None,
     ):
-        """
-        :param decay_rate: معدل التضاؤل الزمني
-        :param similarity_threshold: الحد الأدنى للتشابه القبول
-        :param dedup_threshold: حد اكتشاف التكرار
-        :param max_store_size: الحد الأقصى لعدد الذكريات
-        :param decay_function: نوع دالة التضاؤل ('exponential' | 'linear' | 'step')
-        :param db_path: مسار ملف قاعدة البيانات (افتراضي: mowjn_memory.db)
-        """
         self.decay_rate = decay_rate
         self.similarity_threshold = similarity_threshold
         self.dedup_threshold = dedup_threshold
         self.max_store_size = max_store_size
         self.decay_function = decay_function
-        self.db_path = db_path or "mowjn_memory.db"
-        self._db: Optional[sqlite3.Connection] = None
-        self._ensure_db()
+        self.fetch_multiplier = fetch_multiplier
 
-    # ─── Database Layer ──────────────────────────────────────
+        self._write_lock = threading.Lock()
 
-    def _get_connection(self) -> sqlite3.Connection:
-        if self._db is None:
-            self._db = sqlite3.connect(self.db_path, check_same_thread=False)
-            self._db.row_factory = sqlite3.Row
-        return self._db
-
-    def _ensure_db(self) -> None:
-        conn = self._get_connection()
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS memories (
-                id TEXT PRIMARY KEY,
-                content TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                timestamp REAL NOT NULL,
-                created_at REAL NOT NULL DEFAULT (strftime('%s', 'now'))
+        # ✅ تحميل نموذج الـ embedding (مرة وحدة)
+        model_name = embedding_model or self.DEFAULT_MODEL
+        try:
+            from sentence_transformers import SentenceTransformer
+            self._embedder = SentenceTransformer(model_name)
+            logger.info(f"Loaded embedding model: {model_name}")
+        except ImportError:
+            logger.warning(
+                "sentence-transformers not installed. "
+                "Install with: pip install sentence-transformers"
             )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_timestamp ON memories(timestamp)")
-        conn.commit()
+            self._embedder = None
 
-    def _serialize_embedding(self, emb: list[float]) -> bytes:
-        return np.array(emb, dtype=np.float32).tobytes()
+        # ✅ ChromaDB setup
+        if persist_directory:
+            Path(persist_directory).mkdir(parents=True, exist_ok=True)
+            self._client = chromadb.PersistentClient(
+                path=persist_directory,
+                settings=Settings(anonymized_telemetry=False),
+            )
+        else:
+            self._client = chromadb.Client(
+                Settings(anonymized_telemetry=False)
+            )
 
-    def _deserialize_embedding(self, blob: bytes) -> list[float]:
-        return np.frombuffer(blob, dtype=np.float32).tolist()
+        self._collection = self._client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
 
-    # ─── Core Methods ────────────────────────────────────────
+    # ─── Context Manager ─────────────────────────────────────
 
-    def _cosine_similarity(self, vec_a: list[float], vec_b: list[float]) -> float:
-        """حساب التشابه الجتاهي بين متجهين."""
-        a = np.array(vec_a, dtype=np.float64)
-        b = np.array(vec_b, dtype=np.float64)
-        norm_a = np.linalg.norm(a)
-        norm_b = np.linalg.norm(b)
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        return float(np.dot(a, b) / (norm_a * norm_b))
+    @contextmanager
+    def session(self) -> Iterator["AdaptiveMemoryEngine"]:
+        try:
+            yield self
+        finally:
+            self.close()
+
+    # ─── Core Helpers ────────────────────────────────────────
+
+    def _embed(self, texts: list[str]) -> list[list[float]]:
+        """✅ تحويل نصوص إلى embeddings."""
+        if self._embedder is None:
+            raise RuntimeError(
+                "No embedding model available. "
+                "Install sentence-transformers or pass embeddings manually."
+            )
+        embeddings = self._embedder.encode(texts, show_progress_bar=False)
+        return [emb.tolist() for emb in embeddings]
 
     def _calculate_time_decay(self, timestamp: datetime) -> tuple[float, float]:
-        """حساب معامل التضاؤل الزمني بناءً على الفارق بالأيام."""
         now = datetime.now(timezone.utc)
-        days_old = (now - timestamp).total_seconds() / (3600 * 24)
-        days_old = max(0, days_old)
+        days_old = max(0, (now - timestamp).total_seconds() / 86400)
 
         if self.decay_function == "exponential":
             factor = math.exp(-self.decay_rate * days_old)
         elif self.decay_function == "linear":
             factor = max(0, 1 - self.decay_rate * days_old)
         elif self.decay_function == "step":
-            step_days = 7  # كل أسبوع تنخفض الدرجة
+            step_days = 7
             factor = max(0, 1 - self.decay_rate * (days_old // step_days))
         else:
             factor = math.exp(-self.decay_rate * days_old)
 
         return float(factor), float(days_old)
 
+    @staticmethod
+    def _safe_iso(dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
+    # ─── Core Methods ────────────────────────────────────────
+
     def add_memory(
         self,
         memory_id: str,
         content: str,
-        embedding: list[float],
+        embedding: Optional[list[float]] = None,  # ✅ صار اختياري
         timestamp: Optional[datetime] = None,
     ) -> bool:
         """
-        إضافة سجل جديد إلى الذاكرة مع فحص التكرار.
-
-        :return: True إذا أُضيف بنجاح، False إذا كان مكرراُ
+        إضافة سجل جديد. 
+        ✅ لو ما مرّرت embedding، ينحسب تلقائياً من content.
         """
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
 
-        # Deduplication check
+        # ✅ احسب embedding لو ما موجود
+        if embedding is None:
+            embedding = self._embed([content])[0]
+
+        # فحص التكرار
         existing = self.retrieve(embedding, top_k=1)
         if existing and existing[0]["semantic_score"] > self.dedup_threshold:
             logger.info(f"Duplicate detected for {memory_id}, skipping.")
             return False
 
-        ts_float = timestamp.timestamp()
-        conn = self._get_connection()
         try:
-            conn.execute(
-                "INSERT OR REPLACE INTO memories (id, content, embedding, timestamp) VALUES (?, ?, ?, ?)",
-                (memory_id, content, self._serialize_embedding(embedding), ts_float),
-            )
-            conn.commit()
+            with self._write_lock:
+                self._collection.upsert(
+                    ids=[memory_id],
+                    embeddings=[embedding],
+                    documents=[content],
+                    metadatas=[{"timestamp": self._safe_iso(timestamp)}],
+                )
             logger.info(f"Memory added: {memory_id}")
             return True
-        except sqlite3.IntegrityError as e:
+        except Exception as e:
             logger.error(f"Failed to add memory {memory_id}: {e}")
             return False
 
     def retrieve(
-        self, query_embedding: list[float], top_k: int = 3
+        self,
+        query: str,  # ✅ صار يستقبل نص بدل embedding
+        query_embedding: Optional[list[float]] = None,
+        top_k: int = 3,
     ) -> list[dict]:
-        """استرجاع أفضل النتائج بالدمج بين التشابه الدلالي والوزن الزمني."""
-        conn = self._get_connection()
-        rows = conn.execute("SELECT id, content, embedding, timestamp FROM memories").fetchall()
+        """
+        استرجاع أفضل النتائج.
+        ✅ تقدر تمرّ نص أو embedding.
+        """
+        # ✅ احسب embedding لو ما موجود
+        if query_embedding is None:
+            query_embedding = self._embed([query])[0]
+
+        total = self._collection.count()
+        if total == 0:
+            return []
+
+        fetch_k = min(top_k * self.fetch_multiplier, total)
+
+        raw = self._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=fetch_k,
+            include=["documents", "metadatas", "distances"],
+        )
 
         results = []
-        for row in rows:
-            item_emb = self._deserialize_embedding(row["embedding"])
-            semantic_score = self._cosine_similarity(query_embedding, item_emb)
+        for i in range(len(raw["ids"][0])):
+            semantic_score = 1.0 - raw["distances"][0][i]
 
             if semantic_score < self.similarity_threshold:
                 continue
 
-            ts_dt = datetime.fromtimestamp(row["timestamp"], tz=timezone.utc)
+            ts_dt = datetime.fromisoformat(raw["metadatas"][0][i]["timestamp"])
             time_decay, days_old = self._calculate_time_decay(ts_dt)
             final_score = semantic_score * time_decay
 
             results.append({
-                "id": row["id"],
-                "content": row["content"],
-                "semantic_score": round(float(semantic_score), 4),
-                "time_decay_factor": round(float(time_decay), 4),
-                "final_score": round(float(final_score), 4),
+                "id": raw["ids"][0][i],
+                "content": raw["documents"][0][i],
+                "semantic_score": round(semantic_score, 4),
+                "time_decay_factor": round(time_decay, 4),
+                "final_score": round(final_score, 4),
                 "days_old": round(days_old, 2),
             })
 
@@ -186,121 +220,163 @@ class AdaptiveMemoryEngine:
 
     # ─── Batch Operations ────────────────────────────────────
 
-    def add_memories_batch(self, memories: list[dict]) -> dict[str, bool]:
+    def add_memories_batch(
+        self, memories: list[dict]
+    ) -> dict[str, bool]:
         """
-        إضافة دفعة من الذكريات.
+        ✅ إضافة دفعة (مبسّطة). مرّر {'id', 'content'} فقط — بدون embedding.
+        """
+        # ✅ فصل اللي محتاج احتساب embedding
+        needs_embedding = [
+            (i, mem) for i, mem in enumerate(memories)
+            if "embedding" not in mem
+        ]
 
-        :param memories: قائمة بـ {'id', 'content', 'embedding', 'timestamp'}
-        :return: قاموس بالنتائج لكل ID
-        """
-        results = {}
+        if needs_embedding:
+            texts = [mem["content"] for _, mem in needs_embedding]
+            computed = self._embed(texts)
+            for (i, mem), emb in zip(needs_embedding, computed):
+                memories[i]["embedding"] = emb
+
+        ids, embeddings, documents, metadatas = [], [], [], []
+
         for mem in memories:
-            success = self.add_memory(
-                memory_id=mem["id"],
-                content=mem["content"],
-                embedding=mem["embedding"],
-                timestamp=mem.get("timestamp"),
-            )
-            results[mem["id"]] = success
-        return results
+            ids.append(mem["id"])
+            embeddings.append(mem["embedding"])
+            documents.append(mem["content"])
+            ts = mem.get("timestamp") or datetime.now(timezone.utc)
+            metadatas.append({"timestamp": self._safe_iso(ts)})
+
+        try:
+            with self._write_lock:
+                self._collection.upsert(
+                    ids=ids,
+                    embeddings=embeddings,
+                    documents=documents,
+                    metadatas=metadatas,
+                )
+            return {mid: True for mid in ids}
+        except Exception as e:
+            logger.error(f"Batch add failed: {e}")
+            return {
+                mem["id"]: self.add_memory(
+                    memory_id=mem["id"],
+                    content=mem["content"],
+                    embedding=mem.get("embedding"),
+                    timestamp=mem.get("timestamp"),
+                )
+                for mem in memories
+            }
 
     # ─── Maintenance ─────────────────────────────────────────
 
-    def cleanup_low_score(
-        self, query_embedding: list[float], min_final_score: float = 0.1
-    ) -> list[str]:
-        """حذف الذكريات ذات الدرجة النهائية المنخفضة."""
-        results = self.retrieve(query_embedding, top_k=self.max_store_size)
-        ids_to_remove = [r["id"] for r in results if r["final_score"] < min_final_score]
+    def cleanup_low_score(self, min_final_score: float = 0.1) -> list[str]:
+        total = self._collection.count()
+        if total == 0:
+            return []
 
-        conn = self._get_connection()
-        removed = []
-        for mid in ids_to_remove:
-            conn.execute("DELETE FROM memories WHERE id = ?", (mid,))
-            removed.append(mid)
+        raw = self._collection.get(include=["metadatas"], limit=total)
 
-        conn.commit()
-        logger.info(f"Cleaned up {len(removed)} low-score memories.")
-        return removed
+        ids_to_remove = []
+        for i in range(len(raw["ids"])):
+            ts_str = raw["metadatas"][i].get("timestamp")
+            if not ts_str:
+                continue
+            ts_dt = datetime.fromisoformat(ts_str)
+            time_decay, _ = self._calculate_time_decay(ts_dt)
+            if time_decay < min_final_score:
+                ids_to_remove.append(raw["ids"][i])
+
+        if ids_to_remove:
+            with self._write_lock:
+                self._collection.delete(ids=ids_to_remove)
+            logger.info(f"Cleaned up {len(ids_to_remove)} low-score memories.")
+
+        return ids_to_remove
+
+    def enforce_size_limit(self) -> list[str]:
+        total = self._collection.count()
+        if total <= self.max_store_size:
+            return []
+
+        excess = total - self.max_store_size
+        raw = self._collection.get(include=["metadatas"], limit=total)
+
+        indexed = [
+            (i, raw["metadatas"][i].get("timestamp", ""))
+            for i in range(len(raw["ids"]))
+        ]
+        indexed.sort(key=lambda x: x[1])
+        ids_to_remove = [raw["ids"][i] for i, _ in indexed[:excess]]
+
+        if ids_to_remove:
+            with self._write_lock:
+                self._collection.delete(ids=ids_to_remove)
+            logger.info(
+                f"Removed {len(ids_to_remove)} oldest memories (size limit)."
+            )
+
+        return ids_to_remove
 
     def get_stats(self) -> dict:
-        """إحصائيات عامة عن الذاكرة."""
-        conn = self._get_connection()
-        count = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
-        oldest = conn.execute(
-            "SELECT MIN(timestamp) FROM memories"
-        ).fetchone()[0]
-        newest = conn.execute(
-            "SELECT MAX(timestamp) FROM memories"
-        ).fetchone()[0]
-
+        count = self._collection.count()
         return {
             "total_memories": count,
-            "oldest_timestamp": oldest,
-            "newest_timestamp": newest,
             "max_store_size": self.max_store_size,
             "decay_function": self.decay_function,
+            "utilization": f"{count / self.max_store_size:.1%}"
+            if self.max_store_size else "N/A",
         }
 
     def close(self) -> None:
-        """إغلاق الاتصال بقاعدة البيانات."""
-        if self._db:
-            self._db.close()
-            self._db = None
+        logger.info("AdaptiveMemoryEngine closed.")
 
 
 # ==========================================
-# تجربة سريعة (Example Usage)
+# تجربة سريعة
 # ==========================================
 if __name__ == "__main__":
-    import tempfile
-    import os
+    tmp_dir = Path(tempfile.gettempdir()) / "test_mowjn_final"
 
-    # استخدام قاعدة بيانات مؤقتة للاختبار
-    tmp_db = os.path.join(tempfile.gettempdir(), "test_mowjn.db")
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
 
-    engine = AdaptiveMemoryEngine(
+    # ✅ لاحظ: ما احتجنا نجيب embeddings يدوياً!
+    with AdaptiveMemoryEngine(
         decay_rate=0.05,
         similarity_threshold=0.4,
-        db_path=tmp_db,
-    )
+        persist_directory=str(tmp_dir),
+    ) as engine:
 
-    current_time = datetime.now(timezone.utc)
-    base_vector = [0.12, 0.85, 0.44, 0.21, 0.90]
+        current_time = datetime.now(timezone.utc)
 
-    # إضافة سياق قديم
-    engine.add_memory(
-        memory_id="MEM_001",
-        content="قرار سابق بخصوص معايير الحوكمة والسياسات العامة",
-        embedding=[0.11, 0.84, 0.43, 0.20, 0.89],
-        timestamp=current_time - timedelta(days=30),
-    )
-
-    # إضافة سياق حديث
-    engine.add_memory(
-        memory_id="MEM_002",
-        content="تحديث أخير بخصوص معايير الحوكمة والسياسات العامة",
-        embedding=[0.10, 0.82, 0.45, 0.22, 0.88],
-        timestamp=current_time - timedelta(days=1),
-    )
-
-    # اختبار الاسترجاع
-    top_memories = engine.retrieve(base_vector, top_k=2)
-    print("--- نتائج الاسترجاع التكيفي ---")
-    for memory in top_memories:
-        print(
-            f"ID: {memory['id']} | النهاية: {memory['final_score']} | "
-            f"التشابه: {memory['semantic_score']} | "
-            f"التضاؤل: {memory['time_decay_factor']} "
-            f"(عمرها {memory['days_old']} يوم)"
+        # ✅ إضافة نص فقط — بدون embedding
+        engine.add_memory(
+            memory_id="MEM_001",
+            content="قرار سابق بخصوص معايير الحوكمة والسياسات العامة",
+            timestamp=current_time - timedelta(days=30),
         )
-        print(f"المحتوى: {memory['content']}\n")
 
-    # إحصائيات
-    stats = engine.get_stats()
-    print(f"إجمالي الذكريات: {stats['total_memories']}")
+        engine.add_memory(
+            memory_id="MEM_002",
+            content="تحديث أخير بخصوص معايير الحوكمة والسياسات العامة",
+            timestamp=current_time - timedelta(days=1),
+        )
 
-    # تنظيف
-    engine.close()
-    os.remove(tmp_db)
-    print("تم التنظيف ✅")
+        # ✅ استرجاع بنص فقط — النظام يحسب embedding تلقائياً
+        top = engine.retrieve("معايير الحوكمة والسياسات", top_k=2)
+
+        print("--- نتائج الاسترجاع ---")
+        for m in top:
+            print(
+                f"ID: {m['id']} | النهاية: {m['final_score']} | "
+                f"التشابه: {m['semantic_score']} | "
+                f"عمرها {m['days_old']} يوم"
+            )
+            print(f"المحتوى: {m['content']}\n")
+
+        print(f"الإجمالي: {engine.get_stats()['total_memories']}")
+
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    print("✅ تم")
