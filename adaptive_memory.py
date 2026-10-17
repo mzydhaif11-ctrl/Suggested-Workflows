@@ -1,3 +1,4 @@
+
 """Adaptive Memory Engine module for intelligent context retrieval."""
 from datetime import datetime, timedelta, timezone
 import math
@@ -5,12 +6,12 @@ import math
 import numpy as np
 
 
-class AdaptiveMemoryEngine:
-    """Engine for adaptive memory management with semantic similarity and time decay."""
+class BasicMemoryEngine:
+    """Engine for adaptive memory management with semantic similarity and time decay (basic/educational version)."""
 
     def __init__(self, decay_rate=0.01, similarity_threshold=0.5):
         """
-        Initialize the Adaptive Memory Engine.
+        Initialize the Basic Memory Engine.
 
         :param decay_rate: معدل التضاؤل الزمني (كلما زاد، قل وزن الذكريات القديمة بسرعة)
         :param similarity_threshold: الحد الأدنى لمستوى التشابه القبول
@@ -88,7 +89,7 @@ class AdaptiveMemoryEngine:
 # تجربة سريعة للوظيفة (Example Usage)
 # ==========================================
 if __name__ == "__main__":
-    engine = AdaptiveMemoryEngine(decay_rate=0.05, similarity_threshold=0.4)
+    engine = BasicMemoryEngine(decay_rate=0.05, similarity_threshold=0.4)
     current_time = datetime.now(timezone.utc)
 
     # نموذج لمتجهات وهمية للعرض (شبه مطابقة)
