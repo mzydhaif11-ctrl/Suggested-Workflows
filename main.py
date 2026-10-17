@@ -14,7 +14,7 @@ import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from adaptive_memory import AdaptiveMemoryEngine
+from adaptive_memory_engine import AdaptiveMemoryEngine
 
 # ─── إعداد الـ logging ─────────────────────────────────────
 logging.basicConfig(
