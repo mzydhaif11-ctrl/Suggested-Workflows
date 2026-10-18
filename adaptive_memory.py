@@ -9,7 +9,7 @@ import numpy as np
 class BasicMemoryEngine:
     """
     Engine for adaptive memory management with semantic similarity and time decay.
-    
+
     Uses sentence-transformers for automatic Arabic-aware embedding generation.
     (basic/educational version)
     """
@@ -74,10 +74,10 @@ class BasicMemoryEngine:
     def add_memory(self, memory_id, content, embedding=None, timestamp=None):
         """
         إضافة سجل جديد إلى الذاكرة.
-        
+
         :param memory_id: معرف فريد للذكرى
         :param content: نص المحتوى
-        :param embedding: متجه دلالي (اختياري — يُحسب تلقائياً من content)
+        :param embedding: متجه دلالي (اختياري — يُحسب تلقائياُ من content)
         :param timestamp: الطابع الزمني (اختياري — الوقت الحالي إذا لم يُمرَّر)
         """
         if timestamp is None:
@@ -97,7 +97,7 @@ class BasicMemoryEngine:
     def retrieve(self, query_embedding=None, query_text=None, top_k=3):
         """
         استرجاع أفضل النتائج بالدمج بين التشابه الدلالي والوزن الزمني.
-        
+
         :param query_embedding: متجه الاستعلام (اختياري)
         :param query_text: نص الاستعلام (اختياري — يُحوَّل لمتجه تلقائياً)
         :param top_k: عدد النتائج المطلوبة
