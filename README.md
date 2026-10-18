@@ -28,7 +28,8 @@
 
 **الحل:** نظام متكامل يجمع بين:
 - **ذاكرة سياقية تكيفية** تحفظ المحادثات كمتجهات دلالية مع تضاؤل زمني تدريجي
-- **محرك استرجاع معلومات (RAG)** يبحث دلالياً في قاعدة المعرفة الثابتة
+- **محرك استرجاع معلومات (RAG)** يبحث دلالياُ في قاعدة المعرفة الثابتة
+- **نظام تتبع مجهول (Telemetry)** يحسّن النظام تلقائياً بناءً على سلوك المستخدمين
 - **كل شيء محلي** — لا يرسل أي بيانات لسيرفرات خارجية 🔒
 
 ---
@@ -70,6 +71,13 @@
                     │ Transformers     │
                     │ (Local Embedding)│
                     └──────────────────┘
+                         │
+                         ▼
+                    ┌──────────────────┐
+                    │ Anonymous        │
+                    │ Telemetry        │
+                    │ (Local Insights) │
+                    └──────────────────┘
 ```
 
 ---
@@ -83,7 +91,8 @@
 | `vector_store.py` | مخزن متجهات لقاعدة المعرفة | ChromaDB + sentence-transformers | ✅ جاهز |
 | `rag_engine.py` | محرك استرجاع المعلومات المعزز | Vector Search + BM25 Keyword | ✅ جاهز |
 | `ingest.py` | تغذية وفهرسة الوثائق | vector_store integration | ✅ جاهز |
-| `main.py` | الملف الرئيسي — إدارة الطلبات | AdaptiveMemoryEngine | ✅ جاهز |
+| `telemetry.py` | تتبع مجهول لتحسين النظام | Local analytics + community sync | ✅ جاهز |
+| `main.py` | الملف الرئيسي — إدارة الطلبات | AdaptiveMemoryEngine + Telemetry | ✅ جاهز |
 
 ---
 
@@ -94,7 +103,7 @@
 ```
 
 ### 1. الاستقبال 📥
-يصل سؤال المستخدم → يُحوَّل إلى متجه دلالي (Embedding) محلياُ
+يصل سؤال المستخدم → يُحوَّل إلى متجه دلالي (Embedding) محلياً
 
 ### 2. الاسترجاع 🔍
 محرك الذاكرة يبحث في قاعدة البيانات عن الذكريات ذات التشابه الأعلى مع السؤال الحالي
@@ -107,6 +116,9 @@
 
 ### 5. التوليد والحفظ ✨💾
 النموذج يولد الرد → المحادثة كاملة تُحفظ كذكرى جديدة مع فحص التكرار (Deduplication)
+
+### 6. التحسين التلقائي 📊
+نظام Telemetry مجهول يسجّل إحصائيات رقمية فقط (بدون نصوص أو هويات) → يحسّن النظام للجميع تلقائياً
 
 ---
 
@@ -122,13 +134,14 @@
 | ✅ نموذج محلي | sentence-transformers يتعالج بالكامل على الجهاز |
 | ✅ تحكم كامل | أنت تتحكم في كل البيانات والوصول إليها |
 | ✅ سيادة رقمية | البيانات الوطنية تبقى داخل الحدود الوطنية 🇸🇦 |
+| ✅ Telemetry مجهول | لا نص استعلام، لا هوية مستخدم، لا IP |
 
 ---
 
 ## 🔧 المتطلبات
 
 ```bash
-pip install numpy sentence-transformers chromadb
+pip install numpy sentence-transformers chromadb requests
 ```
 
 أو تثبيت الكل دفعة واحدة:
@@ -148,7 +161,7 @@ pip install -r requirements.txt
 ### عبر Google Colab:
 
 ```python
-!pip install numpy sentence-transformers chromadb -q
+!pip install numpy sentence-transformers chromadb requests -q
 
 import os
 os.environ["EMBEDDING_MODEL"] = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
@@ -194,6 +207,7 @@ python rag_engine.py
 | `TOP_K_MEMORIES` | عدد الذكريات المسترجعة | `3` |
 | `CHROMA_COLLECTION` | اسم مجموعة ChromaDB | `mowjn_knowledge` |
 | `MAWJAH_DOCS_DIR` | مسار مجلد الوثائق | `docs/` |
+| `TELEMETRY_ENDPOINT` | نقطة نهاية Telemetry المجتمعي | غير مضبوط (اختياري) |
 
 ---
 
@@ -209,13 +223,14 @@ python rag_engine.py
 | ✅ إحصائيات فورية | معرفة حجم الذاكرة وحالتها |
 | ✅ دعم العربية | نموذج متعدد اللغات يدعم العربي بقوة |
 | ✅ Thread-Safe | آمن للكتابة المتزامنة |
+| ✅ Telemetry مجهول | تحسين تلقائي بدون انتهاك الخصوصية |
 
 ---
 
 ## 📂 التقنيات المستخدمة
 
 ```
-Python 3.10+  •  sentence-transformers  •  ChromaDB  •  NumPy  •  HNSW Index
+Python 3.10+  •  sentence-transformers  •  ChromaDB  •  NumPy  •  HNSW Index  •  Requests
 ```
 
 ---
@@ -229,11 +244,16 @@ Suggested-Workflows/
 ├── vector_store.py             # مخزن المتجهات الدلالية
 ├── rag_engine.py               # محرك RAG المحلي
 ├── ingest.py                   # فهرسة الوثائق
+├── telemetry.py                # تتبع مجهول وتحسين تلقائي
 ├── main.py                     # الملف الرئيسي
 ├── docs/                       # قاعدة المعرفة الثابتة
 ├── .chroma_knowledge/          # قاعدة بيانات ChromaDB (محفوظ محلياً)
+├── .telemetry_data/            # بيانات Telemetry المحلية
 ├── requirements.txt            # المتطلبات
 ├── .gitignore                  # ملفات مستبعدة
+├── LICENSE                     # ترخيص MIT
+├── CONTRIBUTING.md             # دليل المساهمة
+├── SECURITY.md                 # سياسة الأمان
 └── README.md                   # هذا الملف
 ```
 
