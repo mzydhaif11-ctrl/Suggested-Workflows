@@ -1,63 +1,89 @@
-<div align="center">
 
 # 🌊 موجة البيان | Mowjn AI-Bayan
 
-### نظام ذاكرة سياقية تكيفية لمنصة ذكاء اصطناعي
+### نظام ذاكرة سياقية تكيفية ومحرك استرجاع معلومات محلي بالكامل
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status: Active](https://img.shields.io/badge/Status-Active-brightgreen.svg)](#)
-[![Gemini API](https://img.shields.io/badge/API-Gemini%203.8-orange.svg)](https://ai.google.dev/)
+[![Local First](https://img.shields.io/badge/Privacy-Local%20First-purple.svg)](#)
+[![Arabic NLP](https://img.shields.io/badge/NLP-Arabic%20Support-orange.svg)](#)
+[![Made in KSA](https://img.shields.io/badge/Made%20in-KSA%20🇸🇦-006C35?style=for-the-badge)](#)
 
-</div>
+---
+
+## 🎯 الرؤية
+
+> **نُريد أن تكون التقنية العربية في خدمة الوطن.**
+
+موجة البيان مشروع يهدف لبناء بنية تحتية ذكية محلية بالكامل — لا تعتمد على سيرفرات خارجية، لا تُرسل بيانات المواطنين لأي جهة أجنبية، وتخدم اللغة العربية بأعلى جودة ممكنة.
+
+هذا المشروع هو خطوة نحو **السيادة الرقمية** — لأن البيانات الوطنية يجب أن تبقى وطنية. 🇸🇦
 
 ---
 
 ## 📖 نظرة عامة
 
-**المشكلة:** النماذج اللغوية الكبيرة (LLMs) ما عندها ذاكرة دائمة — كل محادثة تبدأ من الصفر بدون سياق سابق.
+**المشكلة:** النماذج اللغوية الكبيرة (LLMs) ما عندها ذاكرة دائمة — كل محادثة تبدأ من الصفر بدون سياق سابق. والبدائل المتاحة تعتمد على خدمات سحابية أجنبية تنقل البيانات خارج الحدود.
 
-**الحل:** نظام ذاكرة تكيفية يحفظ كل محادثة كـ Embedding دلالي، ويسترجع الذكريات المرتبطة تلقائيًا قبل توليد كل رد — مع تضاؤل زمني تدريجي يضمن أولوية المعلومات الحديثة.
+**الحل:** نظام متكامل يجمع بين:
+- **ذاكرة سياقية تكيفية** تحفظ المحادثات كمتجهات دلالية مع تضاؤل زمني تدريجي
+- **محرك استرجاع معلومات (RAG)** يبحث دلالياً في قاعدة المعرفة الثابتة
+- **كل شيء محلي** — لا يرسل أي بيانات لسيرفرات خارجية 🔒
 
 ---
 
 ## 🏗️ البنية المعمارية
 
 ```
-┌─────────────┐     ┌──────────────────┐     ┌──────────────┐
-│   User      │────▶│  Context         │────▶│  Gemini      │
-│  Prompt     │     │  Enrichment      │     │  Model       │
-└─────────────┘     │                  │     │              │
-                    │  ┌────────────┐  │     └──────────────┘
+┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│   User      │────▶│  Context         │────▶│  Response        │
+│  Prompt     │     │  Enrichment      │     │  Generation      │
+└─────────────┘     │                  │     └──────────────────┘
+                    │  ┌────────────┐  │
                     │  │ Adaptive   │◀─┼────────────┼── Save
-                    │  │ Memory     │  │            │  Response
+                    │  │ Memory     │  │            │  Conversation
                     │  │ Engine     │  │            │
                     │  └────────────┘  │            │
-                    │        │         │            │
-                    │    ┌──────────┐  │            │
-                    └────▶│ SQLite   │◀─┘            │
-                         │ Database │               │
-                         └──────────┘               │
+                    │       │          │            │
+                    │  ┌──────────┐    │            │
+                    └──▶│ ChromaDB │◀──┘            │
+                        │ (Persistent)              │
+                        └──────────┘                │
                                                     │
                          ┌──────────────────────────┘
                          ▼
-                    ┌──────────────┐
-                    │ Embedding    │
-                    │ Model        │
-                    └──────────────┘
+                    ┌──────────────────┐
+                    │ Grounded RAG     │
+                    │ Engine           │
+                    │                  │
+                    │ ┌────────────┐   │
+                    │ │ Vector     │   │
+                    │ │ Store      │   │
+                    │ │ (docs/)    │   │
+                    │ └────────────┘   │
+                    └──────────────────┘
+                         │
+                         ▼
+                    ┌──────────────────┐
+                    │ Sentence-        │
+                    │ Transformers     │
+                    │ (Local Embedding)│
+                    └──────────────────┘
 ```
 
 ---
 
 ## ⚙️ المكونات الرئيسية
 
-| المكون | الوظيفة | الحالة |
-|--------|---------|--------|
-| `main.py` | الملف الرئيسي — إدارة الطلبات والاستجابة عبر Google Gen AI SDK | ✅ جاهز |
-| `adaptive_memory_engine.py` | محرك الذاكرة التكيفية (تشابه + تضاؤل زمني + SQLite) | ✅ جاهز |
-| `rag_engine.py` | محرك استرجاع المعلومات المعزز | 🔧 قيد التطوير |
-| `ingest.py` | تغذية البيانات الأولية للنظام | 🔧 قيد التطوير |
-| `mowjh_engine.py` | المحرك الأساسي للمنصة | 🔧 قيد التطوير |
+| المكون | الوظيفة | التقنية | الحالة |
+|--------|---------|---------|--------|
+| `adaptive_memory_engine.py` | محرك الذاكرة التكيفية المتقدم | ChromaDB + sentence-transformers | ✅ جاهز |
+| `adaptive_memory.py` | نسخة تعليمية مبسطة | NumPy + sentence-transformers | ✅ جاهز |
+| `vector_store.py` | مخزن متجهات لقاعدة المعرفة | ChromaDB + sentence-transformers | ✅ جاهز |
+| `rag_engine.py` | محرك استرجاع المعلومات المعزز | Vector Search + BM25 Keyword | ✅ جاهز |
+| `ingest.py` | تغذية وفهرسة الوثائق | vector_store integration | ✅ جاهز |
+| `main.py` | الملف الرئيسي — إدارة الطلبات | AdaptiveMemoryEngine | ✅ جاهز |
 
 ---
 
@@ -68,7 +94,7 @@
 ```
 
 ### 1. الاستقبال 📥
-يصل سؤال المستخدم → يُحوَّل إلى متجه دلالي (Embedding)
+يصل سؤال المستخدم → يُحوَّل إلى متجه دلالي (Embedding) محلياُ
 
 ### 2. الاسترجاع 🔍
 محرك الذاكرة يبحث في قاعدة البيانات عن الذكريات ذات التشابه الأعلى مع السؤال الحالي
@@ -84,16 +110,36 @@
 
 ---
 
+## 🔒 الخصوصية والأمان — السيادة الرقمية
+
+هذا النظام مصمم ليكون **محلي بالكامل**:
+
+| الميزة | التفاصيل |
+|--------|----------|
+| ❌ لا إرسال بيانات | لا يوجد اتصال بـ Google أو أي خدمة خارجية |
+| ❌ لا يحتاج API Key | يعمل بدون مفاتيح API |
+| ✅ تخزين محلي | ChromaDB يحفظ المتجهات على القرص المحلي |
+| ✅ نموذج محلي | sentence-transformers يتعالج بالكامل على الجهاز |
+| ✅ تحكم كامل | أنت تتحكم في كل البيانات والوصول إليها |
+| ✅ سيادة رقمية | البيانات الوطنية تبقى داخل الحدود الوطنية 🇸🇦 |
+
+---
+
 ## 🔧 المتطلبات
 
 ```bash
-pip install numpy google-genai
+pip install numpy sentence-transformers chromadb
 ```
 
 أو تثبيت الكل دفعة واحدة:
 ```bash
 pip install -r requirements.txt
 ```
+
+### المتطلبات الإضافية:
+- Python 3.10+
+- ~500MB مساحة للتحميل الأولي لنموذج التضمين
+- مجلد `docs/` يحتوي ملفات `.md` أو `.txt` لقاعدة المعرفة
 
 ---
 
@@ -102,13 +148,10 @@ pip install -r requirements.txt
 ### عبر Google Colab:
 
 ```python
-!pip install numpy google-genai
+!pip install numpy sentence-transformers chromadb -q
 
 import os
-os.environ["GOOGLE_API_KEY"] = "your_api_key_here"
-os.environ["MODEL_NAME"] = "gemini-3.8-flash"
-os.environ["EMBEDDING_MODEL"] = "gemini-embedding-2"
-os.environ["MAX_WORKERS"] = "1"
+os.environ["EMBEDDING_MODEL"] = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
 
 %run main.py
 ```
@@ -119,8 +162,24 @@ os.environ["MAX_WORKERS"] = "1"
 git clone https://github.com/mzydhaif11-ctrl/Suggested-Workflows.git
 cd Suggested-Workflows
 pip install -r requirements.txt
-export GOOGLE_API_KEY="your_api_key_here"
 python main.py
+```
+
+### تشغيل فهرسة الوثائق:
+
+```bash
+# فهرسة عادية (يبني لو ما موجود)
+python ingest.py
+
+# إعادة بناء كاملة
+python ingest.py --rebuild
+```
+
+### تجربة محرك RAG:
+
+```bash
+python rag_engine.py
+# اكتب أسئلة بالعربي واختبر النتائج
 ```
 
 ---
@@ -129,16 +188,12 @@ python main.py
 
 | المتغير | الوصف | القيمة الافتراضية |
 |---------|-------|-------------------|
-| `GOOGLE_API_KEY` | مفتاح Google AI Studio | **مطلوب** 🔑 |
-| `MODEL_NAME` | نموذج التوليد | `gemini-3.8-flash` |
-| `EMBEDDING_MODEL` | نموذج المتجهات | `gemini-embedding-2` |
-| `MAX_TOKENS` | الحد الأقصى للرد | `1024` |
-| `TEMPERATURE` | درجة الإبداع | `0.7` |
+| `EMBEDDING_MODEL` | نموذج التضمين الدلالي | `sentence-transformers/paraphrase-xlm-r-multilingual-v1` |
 | `DECAY_RATE` | معدل التضاؤل الزمني | `0.01` |
 | `SIMILARITY_THRESHOLD` | الحد الأدنى للتشابه | `0.5` |
 | `TOP_K_MEMORIES` | عدد الذكريات المسترجعة | `3` |
-| `MEMORY_DB_PATH` | مسار قاعدة البيانات | `mowjn_memory.db` |
-| `MAX_WORKERS` | عدد الطلبات المتزامنة | `5` |
+| `CHROMA_COLLECTION` | اسم مجموعة ChromaDB | `mowjn_knowledge` |
+| `MAWJAH_DOCS_DIR` | مسار مجلد الوثائق | `docs/` |
 
 ---
 
@@ -146,19 +201,40 @@ python main.py
 
 | الميزة | الوصف |
 |--------|-------|
-| ✅ تخزين دائم | SQLite — لا ضياع عند إعادة التشغيل |
+| ✅ تخزين دائم | ChromaDB — لا ضياع عند إعادة التشغيل |
 | ✅ اكتشاف التكرار | Deduplication — يمنع حفظ معلومات مكررة |
 | ✅ دوال تضاؤل متعددة | أسية / خطية / Step |
 | ✅ عمليات دفعات | Batch Operations — معالجة متوازية |
 | ✅ تنظيف تلقائي | حذف الذكريات منخفضة الدرجة |
 | ✅ إحصائيات فورية | معرفة حجم الذاكرة وحالتها |
+| ✅ دعم العربية | نموذج متعدد اللغات يدعم العربي بقوة |
+| ✅ Thread-Safe | آمن للكتابة المتزامنة |
 
 ---
 
 ## 📂 التقنيات المستخدمة
 
 ```
-Python 3.10+  •  Google Gen AI SDK  •  SQLite  •  NumPy  •  ThreadPoolExecutor
+Python 3.10+  •  sentence-transformers  •  ChromaDB  •  NumPy  •  HNSW Index
+```
+
+---
+
+## 📁 هيكل المشروع
+
+```
+Suggested-Workflows/
+├── adaptive_memory.py          # نسخة تعليمية مبسطة
+├── adaptive_memory_engine.py   # محرك الذاكرة المتقدم
+├── vector_store.py             # مخزن المتجهات الدلالية
+├── rag_engine.py               # محرك RAG المحلي
+├── ingest.py                   # فهرسة الوثائق
+├── main.py                     # الملف الرئيسي
+├── docs/                       # قاعدة المعرفة الثابتة
+├── .chroma_knowledge/          # قاعدة بيانات ChromaDB (محفوظ محلياً)
+├── requirements.txt            # المتطلبات
+├── .gitignore                  # ملفات مستبعدة
+└── README.md                   # هذا الملف
 ```
 
 ---
@@ -166,6 +242,8 @@ Python 3.10+  •  Google Gen AI SDK  •  SQLite  •  NumPy  •  ThreadPoolEx
 ## 👤 المؤلف
 
 > **مزيد الرشيدي** — مطور مهتم بالذكاء الاصطناعي ومعالجة اللغات الطبيعية
+>
+> *"نبني لأننا نؤمن بأن التقنية العربية يجب أن تخدم العرب أولاً."*
 
 ---
 
@@ -175,8 +253,6 @@ Python 3.10+  •  Google Gen AI SDK  •  SQLite  •  NumPy  •  ThreadPoolEx
 
 ---
 
-<div align="center">
+**صُنع بـ ❤️ في المملكة العربية السعودية 🇸🇦**
 
-**صُنع بـ ❤️ بواسطة مزيد الرشيدي**
-
-</div>
+*"من أجل وطن أذكى."*
