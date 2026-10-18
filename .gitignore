@@ -1,0 +1,45 @@
+# ─── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+eggs/
+*.egg-info/
+
+# ─── Virtual Environments ────────────────────────────
+venv/
+ENV/
+.env/
+.venv/
+
+# ─── IDEs & Editors ──────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ─── ChromaDB Data (لا ترفع قاعدة البيانات!) ────────
+.chroma_knowledge/
+chroma.sqlite3
+*.db
+
+# ─── Environment Variables (لا ترفع المفاتيح!) ──────
+.env
+.env.local
+.env.*.local
+
+# ─── Logs ────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Jupyter / Colab ─────────────────────────────────
+.ipynb_checkpoints/
+
+# ─── Temporary files ─────────────────────────────────
+tmp/
+temp/
