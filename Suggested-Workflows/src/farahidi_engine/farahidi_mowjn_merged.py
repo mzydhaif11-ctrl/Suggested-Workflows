@@ -1,9 +1,3 @@
-"""
-Farahidi × Mowjn Hybrid Engine v0.4.0
-محرك لغوي عربي متكامل محلي بالكامل 🔒🇸🇦
-علّام
-"""
-
 from __future__ import annotations
 
 import json
@@ -19,19 +13,13 @@ logger = logging.getLogger(__name__)
 
 # ═══════ إعدادات ═══════
 
-EMBEDDING_MODEL = os.getenv(
-    "EMBEDDING_MODEL",
-    "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
-)
-GENERATIVE_MODEL = os.getenv(
-    "ARABIC_GENERATIVE_MODEL",
-    "CohereForAI/aya-23-8b"
-)
-PERSIST_DIR = os.getenv("MAWJN_FARAHIDI_DATA", ".mowjn_farahidi_data")
-DECAY_RATE = float(os.getenv("DECAY_RATE", "0.01"))
-SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.5"))
-TOP_K_MEMORIES = int(os.getenv("TOP_K_MEMORIES", "3"))
-DB_FILE = os.getenv("FARAHIDI_DB", "arabic_lexicon.db")
+EMBEDDING_MODEL = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
+GENERATIVE_MODEL = "Qwen/Qwen2.5-Coder-7B-Instruct"
+PERSIST_DIR = "/content/mowjn_farahidi_data"
+DECAY_RATE = 0.01
+SIMILARITY_THRESHOLD = 0.5
+TOP_K_MEMORIES = 3
+DB_FILE = "arabic_lexicon.db"
 
 
 _engine_state = {
@@ -54,7 +42,9 @@ def _load_embedder():
         return _engine_state["embedder"]
     try:
         from sentence_transformers import SentenceTransformer
+        print(f"🔄 جاري تحميل نموذج التضمين...")
         _engine_state["embedder"] = SentenceTransformer(EMBEDDING_MODEL)
+        print("✅ تم تحميل نموذج التضمين")
     except ImportError:
         raise RuntimeError("pip install sentence-transformers")
     return _engine_state["embedder"]
@@ -65,8 +55,10 @@ def _load_generative_model():
         return _engine_state["tokenizer"], _engine_state["model"]
     try:
         from transformers import AutoTokenizer, AutoModelForCausalLM
+        print(f"🔄 جاري تحميل {GENERATIVE_MODEL}... (قد يستغرق دقائق)")
         _engine_state["tokenizer"] = AutoTokenizer.from_pretrained(GENERATIVE_MODEL)
         _engine_state["model"] = AutoModelForCausalLM.from_pretrained(GENERATIVE_MODEL)
+        print("✅ تم تحميل النموذج بنجاح")
     except ImportError:
         raise RuntimeError("pip install transformers torch accelerate sentencepiece")
     return _engine_state["tokenizer"], _engine_state["model"]
@@ -86,6 +78,7 @@ def _get_chroma_collection():
         name="farahidi_context",
         metadata={"hnsw:space": "cosine"},
     )
+    print("✅ تم تهيئة الذاكرة السياقية (ChromaDB)")
     return _engine_state["collection"]
 
 
@@ -108,6 +101,7 @@ def _add_memory(word: str, content: str) -> bool:
     embedding = _embed(content)
     existing = collection.query(query_embeddings=[embedding], n_results=1, include=["distances"])
     if existing["distances"][0][0] < 0.05:
+        print(f"🔁 تكرار: '{word}' — تم التخطّي")
         return False
     memory_id = f"WORD_{hashlib.md5(word.encode()).hexdigest()[:8]}"
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -115,6 +109,7 @@ def _add_memory(word: str, content: str) -> bool:
         ids=[memory_id], embeddings=[embedding], documents=[content],
         metadatas=[{"word": word, "timestamp": timestamp}],
     )
+    print(f"➕ تم حفظ: '{word}'")
     return True
 
 
@@ -233,7 +228,8 @@ def init_farahidi(api_key=None):
     """)
     conn.commit()
     conn.close()
-    logger.info(f"Farahidi × Mowjn v0.4.0 | Model: {GENERATIVE_MODEL}")
+    print(f"\n🌊 Farahidi × Mowjn v0.4.0 | Model: {GENERATIVE_MODEL}")
+    print("=" * 50)
 
 
 def lookup(word: str) -> dict:
@@ -244,6 +240,7 @@ def lookup(word: str) -> dict:
     memories = _retrieve_context(word)
     if memories:
         best = memories[0]
+        print(f"⚡ Semantic Cache Hit: '{word}' (تشابه: {best['semantic_score']})")
         definition = best["content"]
         try:
             data = json.loads(definition)
@@ -254,9 +251,11 @@ def lookup(word: str) -> dict:
     # SQLite fallback
     sqlite_result = _sqlite_lookup(word)
     if sqlite_result:
+        print(f"⚡ SQLite Cache Hit: '{word}'")
         return sqlite_result
 
     # Cache miss — generate with local model
+    print(f"🔄 Semantic Cache Miss: '{word}' — جاري التحليل...")
     prompt_parts = [
         'أنت معجم عربي موثق متخصص. حلل الكلمة التالية ورد بصيغة JSON فقط تحتوي على:',
         '- definition: التعريف المفصل',
@@ -309,37 +308,35 @@ def ask_conversationally(message: str) -> dict:
     return {"query": message, "response": answer, "context_memories": len(memories)}
 
 
-# ═══════ CLI ═══════
+# ═══════ Demo ═══════
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    init_farahidi()
-    print("\n🌊 Farahidi × Mowjn v0.4.0")
-    print("=" * 50)
-    print("اكتب كلمة أو سؤال (أو 'exit' للخروج)\n")
-    while True:
-        try:
-            user_input = input("❓ ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\n👋 وداعا!")
-            break
-        if user_input.lower() in ("exit", "quit", "خروج"):
-            print("👋 وداعا!")
-            break
-        if not user_input:
-            continue
-        if len(user_input.split()) <= 3:
-            result = lookup(user_input)
-            if "error" in result:
-                print(f"\n❌ خطأ: {result['error']}")
-            else:
-                print(f"\n📖 {result.get('word', user_input)}:")
-                print(f"   التعريف: {result.get('definition', 'غير متوفر')}")
-                print(f"   الجذر: {result.get('root', 'غير متوفر')}")
-                print(f"   المرادفات: {result.get('synonyms', [])}")
-                print(f"   المصدر: {result.get('source', 'غير معروف')}")
-        else:
-            result = ask_conversationally(user_input)
-            print(f"\n💬 {result['response'][:800]}")
-            print(f"\n   سياق مستخدم: {result['context_memories']} ذكرى")
-        print()
+print("\n🌊 Farahidi × Mowjn Hybrid Engine v0.4.0")
+print("=" * 50)
+print("النموذج: Qwen2.5-Coder-7B | الذاكرة: موجة البيان")
+print("=" * 50)
+
+# تجربة ١: كلمة جديدة
+print("\n📌 تجربة ١: كلمة جديدة (Cache Miss)")
+result = lookup("اليعسوب")
+print(f"   المصدر: {result.get('source')}")
+print(f"   التعريف: {result.get('definition', 'غير متوفر')[:200]}")
+
+# تجربة ٢: نفس الكلمة (Cache Hit)
+print("\n📌 تجربة ٢: نفس الكلمة (Semantic Cache Hit)")
+result = lookup("اليعسوب")
+print(f"   المصدر: {result.get('source')}")
+print(f"   التشابه: {result.get('similarity')}")
+
+# تجربة ٣: صياغة مختلفة (بحث دلالي)
+print("\n📌 تجربة ٣: صياغة مختلفة (بحث دلالي)")
+result = lookup("حشرة طائرة كبيرة لها جناحين")
+print(f"   المصدر: {result.get('source')}")
+print(f"   التشابه: {result.get('similarity')}")
+
+# تجربة ٤: سؤال مفتوح
+print("\n📌 تجربة ٤: سؤال مفتوح")
+result = ask_conversationally("وش الفرق بين اليعسوب والذباب؟")
+print(f"   السياق المستخدم: {result['context_memories']} ذكرى")
+print(f"   الرد: {result['response'][:400]}")
+
+print("\n🎉 انتهت التجربة!")
