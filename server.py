@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import os
 from uuid import uuid4
+from time import perf_counter
 
 # استيراد المكونات المحلية
 from adaptive_memory_engine import AdaptiveMemoryEngine
@@ -136,6 +137,33 @@ def build_local_response(query: str, memories: list, rag_results: list) -> tuple
 
     return "\n\n".join(lines), sources
 
+
+@app.post("/api/diagnostics/search")
+async def diagnose_search(request: QueryRequest):
+    """Expose retrieval evidence for semantic-memory debugging."""
+    query = request.message.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="الرسالة فارغة")
+    started = perf_counter()
+    try:
+        memories = memory_engine.retrieve_by_text(query=query, top_k=TOP_K_MEMORIES)
+        rag_results = rag_engine.search(query=query, top_k=TOP_K_MEMORIES)
+        elapsed_ms = round((perf_counter() - started) * 1000, 2)
+        return {
+            "query": query,
+            "elapsed_ms": elapsed_ms,
+            "memory_results": memories,
+            "knowledge_results": rag_results,
+            "counts": {"memories": len(memories), "knowledge": len(rag_results)},
+            "notes": [
+                "semantic_score: دلالي قبل التضاؤل الزمني.",
+                "time_decay_factor: أثر عمر الذكرى.",
+                "final_score: ترتيب الذكرى بعد التضاؤل الزمني.",
+                "درجة RAG المعجمية ليست قابلة للمقارنة مباشرة مع cosine.",
+            ],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"فشل التشخيص: {exc}")
 
 @app.get("/api/status")
 async def get_status():
