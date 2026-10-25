@@ -9,11 +9,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import os
+from uuid import uuid4
 
 # استيراد المكونات المحلية
 from adaptive_memory_engine import AdaptiveMemoryEngine
-from rag_engine import RAGEngine
-from telemetry import TelemetryLogger
+from rag_engine import GroundedRAGEngine
+from telemetry import AnonymousTelemetry
 
 app = FastAPI(title="موجة البيان", description="نظام ذاكرة سياقية تكيفية ومحرك RAG محلي")
 
@@ -37,9 +38,9 @@ class QueryResponse(BaseModel):
 
 
 # تهيئة المكونات عند بدء التشغيل
-memory_engine = AdaptiveMemoryEngine(collection_name=CHROMA_COLLECTION)
-rag_engine = RAGEngine(docs_dir=DOCS_DIR)
-telemetry = TelemetryLogger()
+memory_engine = AdaptiveMemoryEngine(collection_name=os.getenv('MEMORY_COLLECTION', 'mowjn_memories'), persist_directory=os.getenv('MEMORY_PERSIST_DIR', '.chroma_memories'), similarity_threshold=SIMILARITY_THRESHOLD)
+rag_engine = GroundedRAGEngine(pages_dir=DOCS_DIR)
+telemetry = AnonymousTelemetry()
 
 
 @app.get("/")
@@ -56,11 +57,7 @@ async def chat(request: QueryRequest):
 
     try:
         # 1. استرجاع الذكريات السابقة
-        memories = memory_engine.retrieve(
-            query=request.message,
-            top_k=TOP_K_MEMORIES,
-            threshold=SIMILARITY_THRESHOLD,
-        )
+        memories = memory_engine.retrieve_by_text(query=request.message, top_k=TOP_K_MEMORIES)
 
         # 2. بحث في قاعدة المعرفة الثابتة (RAG)
         rag_results = rag_engine.search(query=request.message)
@@ -78,10 +75,10 @@ async def chat(request: QueryRequest):
 
             parts = []
             if memories:
-                mem_text = "\n".join([f"- {m['text']}" for m in memories])
+                mem_text = "\n".join([f"- {m['content']}" for m in memories])
                 parts.append(f"سياق سابق:\n{mem_text}")
             if rag_results:
-                rag_text = "\n".join([f"- {r['text']}" for r in rag_results])
+                rag_text = "\n".join([f"- {r.get('excerpt', '')}" for r in rag_results])
                 parts.append(f"\nمعلومات مرجعية:\n{rag_text}")
 
             enriched_prompt = "\n\n".join(parts) + f"\n\nالسؤال: {request.message}"
@@ -91,11 +88,11 @@ async def chat(request: QueryRequest):
                 "استخدم السياق المقدم للإجابة بدقة ووضوح."
             )
             response_text = llm_client.generate(system_msg, enriched_prompt)
-            sources = [r.get('source', '') for r in rag_results]
+            sources = [r.get('url', r.get('filename', '')) for r in rag_results]
 
         # حفظ المحادثة
-        memory_engine.store(request.message, response_text)
-        telemetry.log_interaction(len(memories), len(rag_results), len(response_text))
+        memory_engine.add_memory(memory_id=str(uuid4()), content=f'سؤال المستخدم: {request.message}\nالرد: {response_text}')
+        telemetry.record_search_event(query_length=len(request.message), results_count=len(memories) + len(rag_results), avg_score=0.0, search_time_ms=0.0, has_results=bool(memories or rag_results))
 
         return QueryResponse(
             response=response_text,
@@ -118,8 +115,8 @@ def build_local_response(query: str, memories: list, rag_results: list) -> tuple
         lines.append("📚 نتائج البحث من قاعدة المعرفة:")
         lines.append("")
         for i, result in enumerate(rag_results, 1):
-            text = result.get('text', '')[:500]  # أول 500 حرف
-            source = result.get('source', 'غير معروف')
+            text = result.get('excerpt', result.get('text', ''))[:500]  # أول 500 حرف
+            source = result.get('title', result.get('source', 'غير معروف'))
             score = result.get('score', 0)
             lines.append(f"**{i}. {source}** (التشابه: {score:.2%})")
             lines.append(text)
@@ -146,7 +143,7 @@ async def get_status():
     return {
         "status": "running",
         "mode": LLM_MODE,
-        "memory_count": memory_engine.stats()["total"],
+        "memory_count": memory_engine.get_stats()["total_memories"],
         "docs_dir": DOCS_DIR,
     }
 
