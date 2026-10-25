@@ -34,9 +34,9 @@ DOCS_DIR = BASE_DIR / "docs"
 # ✅ نموذج محلي يدعم العربي ضمن 100+ لغة
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL",
-    "sentence-transformers/paraphrase-xlm-r-multilingual-v1",
+    "Qwen/Qwen3-Embedding-0.6B",
 )
-CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "mowjn_knowledge")
+CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "mowjn_knowledge_qwen3")
 PERSIST_DIR = str(BASE_DIR / ".chroma_knowledge")
 
 # كاش للنموذج — يُحمَّل مرة وحدة فقط
@@ -59,7 +59,7 @@ def _load_embedder():
     try:
         from sentence_transformers import SentenceTransformer
         logger.info(f"🔄 جاري تحميل نموذج التضمين: {EMBEDDING_MODEL}")
-        _embedder = SentenceTransformer(EMBEDDING_MODEL)
+        _embedder = SentenceTransformer(EMBEDDING_MODEL, trust_remote_code=True)
         logger.info("✅ تم تحميل نموذج التضمين بنجاح")
     except ImportError:
         raise RuntimeError(
