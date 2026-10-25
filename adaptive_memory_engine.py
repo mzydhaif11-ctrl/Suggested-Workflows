@@ -35,7 +35,7 @@ class AdaptiveMemoryEngine:
     """
 
     # ✅ نموذج افتراضي مختار لقوة دعمه للعربي ضمن 100+ لغة
-    DEFAULT_MODEL = "sentence-transformers/paraphrase-xlm-r-multilingual-v1"
+    DEFAULT_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 
     def __init__(
         self,
@@ -45,7 +45,7 @@ class AdaptiveMemoryEngine:
         max_store_size: int = 10_000,
         decay_function: str = "exponential",
         persist_directory: Optional[str] = None,
-        collection_name: str = "mowjn_memories",
+        collection_name: str = "mowjn_memories_qwen3",
         fetch_multiplier: int = 3,
         embedding_model: Optional[str] = None,
     ):
@@ -73,7 +73,7 @@ class AdaptiveMemoryEngine:
         model_name = embedding_model or self.DEFAULT_MODEL
         try:
             from sentence_transformers import SentenceTransformer
-            self._embedder = SentenceTransformer(model_name)
+            self._embedder = SentenceTransformer(model_name, trust_remote_code=True)
             logger.info(f"✅ Loaded embedding model: {model_name}")
         except ImportError:
             logger.warning(
