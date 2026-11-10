@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ─── Configuration ──────────────────────────────────────────────
 
 BASE_DIR = Path(__file__).resolve().parent
-DOCS_DIR = BASE_DIR / "docs"
+DOCS_DIR = Path(os.getenv("MAWJAH_DOCS_DIR", str(BASE_DIR / "docs"))).expanduser()
 
 # ✅ نموذج محلي يدعم العربي ضمن 100+ لغة
 EMBEDDING_MODEL = os.getenv(
@@ -37,7 +37,7 @@ EMBEDDING_MODEL = os.getenv(
     "Qwen/Qwen3-Embedding-0.6B",
 )
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "mowjn_knowledge_qwen3")
-PERSIST_DIR = str(BASE_DIR / ".chroma_knowledge")
+PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", str(BASE_DIR / ".chroma_knowledge"))
 
 # كاش للنموذج — يُحمَّل مرة وحدة فقط
 _embedder = None
