@@ -25,6 +25,8 @@ ENV/
 
 # ─── ChromaDB Data (لا ترفع قاعدة البيانات!) ────────
 .chroma_knowledge/
+.chroma_memories/
+.telemetry_data/
 chroma.sqlite3
 *.db
 
