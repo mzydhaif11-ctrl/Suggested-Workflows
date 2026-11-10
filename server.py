@@ -6,6 +6,8 @@
 """
 
 from fastapi import FastAPI, HTTPException
+from pathlib import Path
+import logging
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import os
@@ -16,6 +18,10 @@ from time import perf_counter
 from adaptive_memory_engine import AdaptiveMemoryEngine
 from rag_engine import GroundedRAGEngine
 from telemetry import AnonymousTelemetry
+from dotenv import load_dotenv
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="موجة البيان", description="نظام ذاكرة سياقية تكيفية ومحرك RAG محلي")
 
@@ -47,7 +53,7 @@ telemetry = AnonymousTelemetry()
 @app.get("/")
 async def serve_index():
     """تقديم الصفحة الرئيسية"""
-    return FileResponse("static/index.html")
+    return FileResponse(Path(__file__).resolve().parent / "static" / "index.html")
 
 
 @app.post("/api/chat", response_model=QueryResponse)
@@ -103,7 +109,8 @@ async def chat(request: QueryRequest):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Chat request failed")
+        raise HTTPException(status_code=500, detail="تعذر إكمال الطلب بسبب خطأ داخلي.") from e
 
 
 def build_local_response(query: str, memories: list, rag_results: list) -> tuple:
@@ -132,8 +139,9 @@ def build_local_response(query: str, memories: list, rag_results: list) -> tuple
     if memories:
         lines.append("")
         lines.append("🧠 سياق المحادثة السابق:")
-        for m in memories:
-            lines.append(f"• {m['text'][:300]}")
+        for memory in memories:
+            text = memory.get('content', memory.get('text', ''))
+            lines.append(f"• {text[:300]}")
 
     return "\n\n".join(lines), sources
 
@@ -163,7 +171,8 @@ async def diagnose_search(request: QueryRequest):
             ],
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"فشل التشخيص: {exc}")
+        logger.exception("Search diagnostics failed")
+        raise HTTPException(status_code=500, detail="تعذر تنفيذ التشخيص بسبب خطأ داخلي.") from exc
 
 @app.get("/api/status")
 async def get_status():
@@ -179,4 +188,4 @@ async def get_status():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=port)
