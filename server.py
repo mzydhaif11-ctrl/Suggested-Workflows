@@ -15,13 +15,14 @@ from uuid import uuid4
 from time import perf_counter
 
 # استيراد المكونات المحلية
-from adaptive_memory_engine import AdaptiveMemoryEngine
-from rag_engine import GroundedRAGEngine
-from telemetry import AnonymousTelemetry
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+from adaptive_memory_engine import AdaptiveMemoryEngine
+from rag_engine import GroundedRAGEngine
+from telemetry import AnonymousTelemetry
 
 app = FastAPI(title="موجة البيان", description="نظام ذاكرة سياقية تكيفية ومحرك RAG محلي")
 
@@ -180,7 +181,11 @@ async def get_status():
     return {
         "status": "running",
         "mode": LLM_MODE,
-        "memory_count": memory_engine.get_stats()["total_memories"],
+        "memory_count": (
+            memory_engine.get_stats()["total_memories"]
+            if memory_engine is not None
+            else 0
+        ),
         "docs_dir": DOCS_DIR,
     }
 
